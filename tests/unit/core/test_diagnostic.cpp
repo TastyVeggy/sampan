@@ -20,4 +20,12 @@ TEST(SourceSpan, ValidatesHalfOpenOffsets) {
                    .valid());
 }
 
+TEST(SourceSpan, DefaultsToTheFirstSourceCoordinate) {
+  const sampan::core::SourceSpan span;
+  EXPECT_EQ(span.start_line, 1);
+  EXPECT_EQ(span.start_column, 1);
+  EXPECT_EQ(span.end_line, 1);
+  EXPECT_EQ(span.end_column, 1);
+}
+
 } // namespace

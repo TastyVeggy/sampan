@@ -1,0 +1,13 @@
+Ident page
+LBrace {
+Ident title
+Colon :
+String "Hello"
+Ident width
+Colon :
+Length 800px
+Ident background
+Colon :
+Color #eef
+RBrace }
+Eof 
