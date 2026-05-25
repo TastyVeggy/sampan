@@ -1,28 +1,22 @@
-.PHONY: test all run test run_test clean build setup distclean
+.PHONY: all build install test clean distclean
+
 BUILD_DIR := build/debug
 PRESET := debug
-PROJECT := sampan
-MAIN_BIN := $(BUILD_DIR)/src/$(PROJECT)
 
+all: install
 
-all: build run
-
-build: 
+build:
 	cmake --preset $(PRESET)
 	cmake --build --preset $(PRESET)
 
-run:
-	./$(MAIN_BIN)
+install: build
+	cmake --install "$(BUILD_DIR)" --prefix "$(CURDIR)"
 
-test: build run_test
-
-run_test:
+test: build
 	ctest --preset $(PRESET)
 
 clean:
-	rm -rf "$(BUILD_DIR)"
+	cmake -E rm -rf "$(BUILD_DIR)"
 
 distclean:
-	rm -rf .cache
-	rm -rf build
-
+	cmake -E rm -rf .cache build bin

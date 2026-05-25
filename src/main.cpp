@@ -1,12 +1,24 @@
-#include <string>
+#include <iostream>
+#include <string_view>
 
-#include "sampan/html/lexer.hpp"
+namespace {
 
-int main() {
-  std::string dummy_html = "<div>Hello World!</div>";
+constexpr int kSuccess = 0;
+constexpr int kCliMisuse = 2;
 
-  sampan::html::Lexer lexer{dummy_html};
-  while (!lexer.done()) {
-    lexer.next();
+void print_usage(std::ostream &output) {
+  output << "Usage: sampan <command>\nCommands:\n"
+         << "  version    Print the Sampan version\n";
+}
+
+} // namespace
+
+int main(const int argc, char *argv[]) {
+  if (argc == 2 && std::string_view{argv[1]} == "version") {
+    
+    std::cout << "Sampan 0.1.0 \n";
+    return kSuccess;
   }
+  print_usage(argc == 1 ? std::cout : std::cerr);
+  return argc == 1 ? kSuccess : kCliMisuse;
 }
