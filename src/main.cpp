@@ -6,7 +6,9 @@
 #include <utility>
 #include <vector>
 
+#include "sampan/ast/dump.hpp"
 #include "sampan/lex/lexer.hpp"
+#include "sampan/parse/parser.hpp"
 
 namespace {
 
@@ -18,7 +20,8 @@ constexpr int kIoError = 5;
 void print_usage(std::ostream &output) {
   output << "Usage: sampan <command>\nCommands:\n"
          << "  version    Print the Sampan version\n"
-         << "  lex <path> Dump Yuloh tokens\n";
+         << "  lex <path> Dump Yuloh tokens\n"
+         << "  parse <path> Dump the Yuloh AST\n";
 }
 
 } // namespace
@@ -54,6 +57,27 @@ int main(const int argc, char *argv[]) {
                 << diagnostic.message << "\n";
     }
     return diagnostics.empty() ? kSuccess : kUserProgramError;
+  }
+  if (argc == 3 && std::string_view{argv[1]} == "parse") {
+    std::ifstream input{argv[2], std::ios::binary};
+    if (!input) {
+      std::cerr << "error: cannot open " << argv[2] << "\n";
+      return kIoError;
+    }
+    std::string source{std::istreambuf_iterator<char>{input},
+                       std::istreambuf_iterator<char>{}};
+    sampan::parse::ParseResult result =
+        sampan::parse::parse(std::move(source), 0);
+    if (result.document != nullptr) {
+      std::cout << sampan::ast::dump(*result.document);
+    }
+    for (const sampan::core::Diagnostic &diagnostic : result.diagnostics) {
+      std::cerr << argv[2] << ":" << diagnostic.span.start_line << ":"
+                << diagnostic.span.start_column << ": "
+                << sampan::core::to_string(diagnostic.severity) << ": "
+                << diagnostic.message << "\n";
+    }
+    return result.diagnostics.empty() ? kSuccess : kUserProgramError;
   }
   print_usage(argc == 1 ? std::cout : std::cerr);
   return argc == 1 ? kSuccess : kCliMisuse;

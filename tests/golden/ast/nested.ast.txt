@@ -1,0 +1,34 @@
+Document
+  Node page
+    Property title = "Nested example"
+    Property width = 960px
+    Property height = 540px
+    Property background = #f4f7fb
+    Node stack
+      Property padding = 24px
+      Property gap = 16px
+      Node heading
+        Property content = "Project dashboard"
+        Property level = 1
+        Property size = 28px
+        Property color = #112233
+      Node row
+        Property gap = 12px
+        Property align = "start"
+        Node box
+          Property width = 240px
+          Property height = 120px
+          Property background = #ffffff
+          Property border-width = 1px
+          Property border-color = #d0d7e2
+          Text "First card"
+        Node stack
+          Property width = 320px
+          Property gap = 8px
+          Node text
+            Property content = "Nested text"
+            Property color = #456789
+          Node button
+            Property padding = 10px
+            Property background = #2f6feb
+            Text "Open details"

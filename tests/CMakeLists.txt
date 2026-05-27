@@ -1,2 +1,3 @@
 add_subdirectory(unit/core)
 add_subdirectory(unit/lex)
+add_subdirectory(unit/parse)

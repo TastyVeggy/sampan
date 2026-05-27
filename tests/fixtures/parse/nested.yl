@@ -1,0 +1,44 @@
+page {
+  title: "Nested example"
+  width: 960px
+  height: 540px
+  background: #f4f7fb
+
+  stack {
+    padding: 24px
+    gap: 16px
+
+    heading {
+      content: "Project dashboard"
+      level: 1
+      size: 28px
+      color: #123
+    }
+
+    row {
+      gap: 12px
+      align: "start"
+
+      box {
+        width: 240px
+        height: 120px
+        background: #fff
+        border-width: 1px
+        border-color: #d0d7e2
+        "First card"
+      }
+
+      stack {
+        width: 320px
+        gap: 8px
+
+        text { content: "Nested text" color: #456789 }
+        button {
+          padding: 10px
+          background: #2f6feb
+          "Open details"
+        }
+      }
+    }
+  }
+}
