@@ -1,1 +1,1 @@
-3:3: duplicate property 'width' on node 'page'
+3:3: error: duplicate property 'width' on node 'page'

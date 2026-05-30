@@ -1,0 +1,7 @@
+3:5: error: node 'text' cannot contain child node 'box'
+6:5: error: node 'heading' cannot contain child node 'row'
+7:5: error: node 'heading' cannot contain child node 'text'
+9:3: error: node 'page' is only allowed at document root
+18:5: error: node 'spacer' cannot contain child node 'box'
+26:5: error: node 'page' is only allowed at document root
+30:5: error: node 'button' cannot contain child node 'text'

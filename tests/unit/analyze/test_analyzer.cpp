@@ -35,7 +35,8 @@ diagnostics_dump(const std::vector<sampan::core::Diagnostic> &diagnostics) {
   std::ostringstream output;
   for (const sampan::core::Diagnostic &diagnostic : diagnostics) {
     output << diagnostic.span.start_line << ":" << diagnostic.span.start_column
-           << ": " << diagnostic.message << "\n";
+           << ": " << sampan::core::to_string(diagnostic.severity) << ": "
+           << diagnostic.message << "\n";
   }
   return output.str();
 }
@@ -108,6 +109,32 @@ TEST(Analyzer, EnforcesPageRootPlacement) {
   EXPECT_EQ(nested_page.tree, nullptr);
 }
 
+TEST(Analyzer, AllowsMultipleChildrenInContainerNodes) {
+  const sampan::analyze::AnalyzeResult result = analyze_source(
+      "page { box { text {} heading {} } stack { box {} box {} } "
+      "row { text {} spacer {} } }");
+
+  EXPECT_TRUE(result.diagnostics.empty());
+  EXPECT_NE(result.tree, nullptr);
+}
+
+TEST(Analyzer, RejectsChildNodesInLeafNodes) {
+  constexpr std::array<std::string_view, 4> leaf_nodes{"text", "heading",
+                                                       "button", "spacer"};
+
+  for (const std::string_view leaf : leaf_nodes) {
+    const sampan::analyze::AnalyzeResult result =
+        analyze_source("page { " + std::string{leaf} + " { box {} } }");
+
+    ASSERT_EQ(result.diagnostics.size(), 1) << leaf;
+    EXPECT_EQ(result.diagnostics.front().message,
+              "node '" + std::string{leaf} +
+                  "' cannot contain child node 'box'")
+        << leaf;
+    EXPECT_EQ(result.tree, nullptr) << leaf;
+  }
+}
+
 TEST(Analyzer, MatchesNodeTreeGoldens) {
   constexpr std::array<std::pair<std::string_view, std::string_view>, 2>
       fixtures{{{"/tests/fixtures/lex/sample.yl",
@@ -127,9 +154,9 @@ TEST(Analyzer, MatchesNodeTreeGoldens) {
 }
 
 TEST(Analyzer, MatchesNegativeFixtureDiagnostics) {
-  constexpr std::array<std::string_view, 4> names{
+  constexpr std::array<std::string_view, 5> names{
       "unknown_node", "unknown_property", "wrong_property_type",
-      "duplicate_property"};
+      "duplicate_property", "invalid_child"};
 
   for (const std::string_view name : names) {
     const std::string fixture_path =

@@ -8,6 +8,7 @@
 #include "sampan/core/overloaded.hpp"
 
 #include "builtins.hpp"
+#include "child_rules.hpp"
 #include "property_rules.hpp"
 
 namespace sampan::analyze {
@@ -107,13 +108,25 @@ private:
                 resolved->items.emplace_back(node::TextChild{
                     .value = text.value.value, .span = text.span});
               },
-              [this, &resolved](const ast::ChildNode &child) {
+              [this, kind, &resolved](const ast::ChildNode &child) {
                 std::unique_ptr<node::Node> resolved_child =
                     analyze_node(*child.value, false);
-                if (resolved_child != nullptr) {
-                  resolved->items.emplace_back(
-                      node::ChildNode{.value = std::move(resolved_child)});
+                if (resolved_child == nullptr) {
+                  return;
                 }
+
+                if (!detail::child_allowed(*kind, resolved_child->kind)) {
+                  report(
+                      child.value->span,
+                      "node '" + std::string{node::to_string(*kind)} +
+                          "' cannot contain child node '" +
+                          std::string{node::to_string(resolved_child->kind)} +
+                          "'");
+                  return;
+                }
+
+                resolved->items.emplace_back(
+                    node::ChildNode{.value = std::move(resolved_child)});
               }},
           item);
     }

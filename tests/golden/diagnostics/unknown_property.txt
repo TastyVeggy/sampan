@@ -1,1 +1,1 @@
-2:3: unknown property 'backgronud' on node 'page'
+2:3: error: unknown property 'backgronud' on node 'page'

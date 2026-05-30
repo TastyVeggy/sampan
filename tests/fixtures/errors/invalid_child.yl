@@ -1,0 +1,32 @@
+page {
+  text { // text not allowed to have child
+    box {}
+  }
+  heading { // heading not allowed to have child
+    row{}
+    text{}
+  }
+  page { // page not allowed other than root node
+    row{}
+  }
+  row { // pass
+    box{}
+    text{}
+    spacer{}
+  }
+  spacer{ // spacer not allowed to have child
+    box{}
+  }
+  stack {  // pass
+    box{}
+    text{}
+    spacer{}
+  }
+  row { // page not allowed to be child
+    page{}
+    text{}
+  }
+  button { // button not allowed to have child
+    text{}
+  }
+}
