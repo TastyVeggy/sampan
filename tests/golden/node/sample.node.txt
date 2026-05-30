@@ -1,0 +1,5 @@
+Tree
+  Node page
+    Property title = "Hello"
+    Property width = 800px
+    Property background = #eeeeff

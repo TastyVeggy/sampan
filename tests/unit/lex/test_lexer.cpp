@@ -75,7 +75,11 @@ TEST(Lexer, MatchesGoldenTokenDump) {
   Lexer lexer{source.str(), 0};
   std::ostringstream actual;
   for (const Token &token : lex_all(lexer)) {
-    actual << sampan::lex::to_string(token.kind) << " " << token.text << "\n";
+    actual << sampan::lex::to_string(token.kind);
+    if (!token.text.empty()) {
+      actual << " " << token.text;
+    }
+    actual << "\n";
   }
   std::ifstream expected_file{std::string{SAMPAN_SOURCE_DIR} +
                               "/tests/golden/tokens/sample.tokens.txt"};
