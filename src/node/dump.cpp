@@ -55,6 +55,9 @@ void write_value(std::ostringstream &output, const Value &value) {
           },
           [&output](const bool resolved) {
             output << (resolved ? "true" : "false");
+          },
+          [&output](const Alignment resolved) {
+            write_quoted(output, std::string{to_string(resolved)});
           }},
       value);
 }
@@ -159,6 +162,18 @@ std::string_view to_string(const PropertyId property) noexcept {
     return "level";
   case PropertyId::Count:
     break;
+  }
+  return "unknown";
+}
+
+std::string_view to_string(const Alignment alignment) noexcept {
+  switch (alignment) {
+  case Alignment::Start:
+    return "start";
+  case Alignment::Center:
+    return "center";
+  case Alignment::End:
+    return "end";
   }
   return "unknown";
 }

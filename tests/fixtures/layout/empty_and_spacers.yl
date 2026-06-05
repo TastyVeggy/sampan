@@ -1,0 +1,17 @@
+page {
+  stack {
+    gap: 7px
+
+    box {}
+    spacer { size: 12px }
+
+    row {
+      width: 80px
+      gap: 5px
+
+      spacer { size: 20px }
+      spacer { size: 0px }
+      box { width: 10px height: 8px }
+    }
+  }
+}

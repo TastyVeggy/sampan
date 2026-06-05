@@ -94,6 +94,32 @@ TEST(Analyzer, RejectsPropertiesOnWrongNodeType) {
   EXPECT_EQ(result.tree, nullptr);
 }
 
+TEST(Analyzer, RejectsInvalidRowAlignment) {
+  const sampan::analyze::AnalyzeResult result =
+      analyze_source("page { row { align: \"middle\" } }");
+
+  ASSERT_EQ(result.diagnostics.size(), 1);
+  EXPECT_EQ(result.diagnostics.front().message,
+            "property 'align' on node 'row' expects one of 'start', 'center', "
+            "or 'end'");
+  EXPECT_EQ(result.tree, nullptr);
+}
+
+TEST(Analyzer, ResolvesRowAlignmentToTypedValue) {
+  const sampan::analyze::AnalyzeResult result =
+      analyze_source("page { row { align: \"end\" } }");
+
+  ASSERT_TRUE(result.diagnostics.empty());
+  ASSERT_NE(result.tree, nullptr);
+  const auto &row =
+      std::get<sampan::node::ChildNode>(result.tree->root->items.front());
+  ASSERT_NE(row.value, nullptr);
+  const auto &alignment =
+      std::get<sampan::node::Property>(row.value->items.front());
+  EXPECT_EQ(std::get<sampan::node::Alignment>(alignment.value),
+            sampan::node::Alignment::End);
+}
+
 TEST(Analyzer, EnforcesPageRootPlacement) {
   const sampan::analyze::AnalyzeResult wrong_root = analyze_source("stack { }");
   ASSERT_EQ(wrong_root.diagnostics.size(), 1);

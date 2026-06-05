@@ -1,0 +1,9 @@
+page {
+  row {
+    width: 210px
+    gap: 10px
+
+    box { width: 100px height: 10px }
+    box { width: 100px height: 20px }
+  }
+}

@@ -1,0 +1,25 @@
+page {
+  stack {
+    padding-top: 2px
+    padding-right: 4px
+    padding-bottom: 6px
+    padding-left: 8px
+    gap: 5px
+
+    box {
+      width: 100px
+      height: 20px
+      margin-top: 3px
+      margin-right: 4px
+      margin-bottom: 5px
+      margin-left: 6px
+      padding-top: 7px
+      padding-right: 8px
+      padding-bottom: 9px
+      padding-left: 10px
+      border-width: 2px
+    }
+
+    box { height: 10px }
+  }
+}

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <expected>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "sampan/node/node.hpp"
@@ -9,9 +11,13 @@ namespace sampan::analyze::detail {
 
 enum class ValueType { Integer, Float, Length, Color, String, Boolean };
 
+using PropertyValueNormalizer =
+    std::expected<node::Value, std::string> (*)(node::Value);
+
 struct PropertyDefinition {
   node::PropertyId id;
   ValueType type;
+  PropertyValueNormalizer normalize{nullptr};
 };
 
 [[nodiscard]] std::optional<node::NodeKind>

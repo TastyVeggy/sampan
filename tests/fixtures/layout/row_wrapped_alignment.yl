@@ -1,0 +1,28 @@
+page {
+  row {
+    width: 130px
+    gap: 10px
+    align: "end"
+
+    box {
+      width: 60px
+      height: 10px
+      "First"
+    }
+    box {
+      width: 60px
+      height: 20px
+      "Second"
+    }
+    box {
+      width: 60px
+      height: 30px
+      "Third"
+    }
+    box {
+      width: 60px
+      height: 10px
+      "Fourth"
+    }
+  }
+}

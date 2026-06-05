@@ -1,6 +1,7 @@
 #include "sampan/analyze/analyzer.hpp"
 
 #include <array>
+#include <expected>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -170,10 +171,21 @@ private:
       return;
     }
 
-    resolved.items.emplace_back(
-        node::Property{.id = definition->id,
-                       .value = resolve_value(source.value),
-                       .span = source.span});
+    node::Value value = resolve_value(source.value);
+    if (definition->normalize != nullptr) {
+      std::expected<node::Value, std::string> normalized =
+          definition->normalize(std::move(value));
+      if (!normalized.has_value()) {
+        report(source.span, "property '" + source.name + "' on node '" +
+                                std::string{node::to_string(node_kind)} + "' " +
+                                normalized.error());
+        return;
+      }
+      value = std::move(*normalized);
+    }
+
+    resolved.items.emplace_back(node::Property{
+        .id = definition->id, .value = std::move(value), .span = source.span});
   }
 
   void report(const core::SourceSpan span, std::string message) {

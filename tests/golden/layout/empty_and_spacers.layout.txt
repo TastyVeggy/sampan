@@ -1,0 +1,41 @@
+Layout
+  Box page
+    content x=0 y=0 width=1024 height=768
+    padding top=0 right=0 bottom=0 left=0
+    border top=0 right=0 bottom=0 left=0
+    margin top=0 right=0 bottom=0 left=0
+    Box stack
+      content x=0 y=0 width=1024 height=34
+      padding top=0 right=0 bottom=0 left=0
+      border top=0 right=0 bottom=0 left=0
+      margin top=0 right=0 bottom=0 left=0
+      Box box
+        content x=0 y=0 width=1024 height=0
+        padding top=0 right=0 bottom=0 left=0
+        border top=0 right=0 bottom=0 left=0
+        margin top=0 right=0 bottom=0 left=0
+      Box spacer
+        content x=0 y=7 width=1024 height=12
+        padding top=0 right=0 bottom=0 left=0
+        border top=0 right=0 bottom=0 left=0
+        margin top=0 right=0 bottom=0 left=0
+      Box row
+        content x=0 y=26 width=80 height=8
+        padding top=0 right=0 bottom=0 left=0
+        border top=0 right=0 bottom=0 left=0
+        margin top=0 right=0 bottom=0 left=0
+        Box spacer
+          content x=0 y=26 width=20 height=0
+          padding top=0 right=0 bottom=0 left=0
+          border top=0 right=0 bottom=0 left=0
+          margin top=0 right=0 bottom=0 left=0
+        Box spacer
+          content x=25 y=26 width=0 height=0
+          padding top=0 right=0 bottom=0 left=0
+          border top=0 right=0 bottom=0 left=0
+          margin top=0 right=0 bottom=0 left=0
+        Box box
+          content x=30 y=26 width=10 height=8
+          padding top=0 right=0 bottom=0 left=0
+          border top=0 right=0 bottom=0 left=0
+          margin top=0 right=0 bottom=0 left=0

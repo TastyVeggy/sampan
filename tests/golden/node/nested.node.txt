@@ -14,7 +14,7 @@ Tree
         Property color = #112233
       Node row
         Property gap = 12px
-        Property align = "start"
+        Property align = "center"
         Node box
           Property width = 240px
           Property height = 120px

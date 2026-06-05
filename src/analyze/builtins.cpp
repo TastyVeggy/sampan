@@ -3,6 +3,8 @@
 #include <array>
 #include <ranges>
 
+#include "property_values.hpp"
+
 namespace sampan::analyze::detail {
 namespace {
 
@@ -46,7 +48,7 @@ constexpr std::array<NamedProperty, 23> kProperties{{
     {"background", {Background, ValueType::Color}},
     {"title", {Title, ValueType::String}},
     {"gap", {Gap, ValueType::Length}},
-    {"align", {Align, ValueType::String}},
+    {"align", {Align, ValueType::String, normalize_alignment}},
     {"content", {Content, ValueType::String}},
     {"color", {Color, ValueType::Color}},
     {"size", {Size, ValueType::Length}},

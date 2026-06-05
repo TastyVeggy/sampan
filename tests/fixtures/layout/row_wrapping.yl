@@ -1,0 +1,72 @@
+page {
+  title: "Long row"
+  width: 1400px
+  height: 960px
+  background: #f4f7fb
+
+  stack {
+    padding: 24px
+    gap: 16px
+
+    heading {
+      content: "Project dashboard"
+      level: 1
+      size: 28px
+      color: #123
+    }
+
+    row {
+      gap: 12px
+      align: "start"
+
+      box {
+        width: 500px
+        height: 120px
+        background: #fff
+        border-width: 1px
+        border-color: #d0d7e2
+        "First card"
+      }
+      spacer {
+        size: 20px
+      }
+
+      box {
+        width: 500px
+        height: 240px
+        background: #fff
+        border-width: 1px
+        border-color: #d0d7e2
+        "Second card"
+      }
+
+      box {
+        width: 500px
+        height: 120px
+        background: #fff
+        border-width: 1px
+        border-color: #d0d7e2
+        "Third card"
+      }
+
+      box {
+        width: 1000px
+        height: 200px
+        background: #fff
+        border-width: 1px
+        border-color: #d0d7e2
+        "Fourth card"
+      }
+
+      box {
+        width: 300px
+        height: 200px
+        background: #fff
+        border-width: 1px
+        border-color: #d0d7e2
+        "Fifth card"
+      }
+
+    }
+  }
+}

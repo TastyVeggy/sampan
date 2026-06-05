@@ -129,23 +129,188 @@ TEST(Layout, PlacesTextAndChildNodesInSourceOrder) {
   EXPECT_DOUBLE_EQ(box.dimensions.content.height, 88.4);
 }
 
-TEST(Layout, MatchesLayoutGoldens) {
-  constexpr std::array<std::pair<std::string_view, std::string_view>, 2>
-      fixtures{{{"/tests/fixtures/lex/sample.yl",
-                 "/tests/golden/layout/sample.layout.txt"},
-                {"/tests/fixtures/parse/nested.yl",
-                 "/tests/golden/layout/nested.layout.txt"}}};
+TEST(Layout, PlacesRowItemsHorizontallyWithMarginsAndGap) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { row { gap: 10px box { width: 100px height: 20px margin: "
+      "5px } box { width: 50px height: 40px } } }");
+  ASSERT_NE(tree, nullptr);
 
-  for (const auto &[fixture_path, golden_path] : fixtures) {
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &row = box_at(*root, 0);
+  ASSERT_EQ(row.items.size(), 2);
+
+  EXPECT_DOUBLE_EQ(box_at(row, 0).dimensions.content.x, 5.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 1).dimensions.content.x, 120.0);
+  EXPECT_DOUBLE_EQ(row.dimensions.content.height, 40.0);
+}
+
+TEST(Layout, WrapsRowsAndUsesGapBetweenLines) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { row { width: 250px gap: 10px box { width: 100px height: "
+      "20px } box { width: 100px height: 30px } box { width: 100px "
+      "height: 40px } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &row = box_at(*root, 0);
+  ASSERT_EQ(row.items.size(), 3);
+
+  EXPECT_DOUBLE_EQ(box_at(row, 0).dimensions.content.x, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 1).dimensions.content.x, 110.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.x, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.y, 40.0);
+  EXPECT_DOUBLE_EQ(row.dimensions.content.height, 80.0);
+}
+
+TEST(Layout, KeepsExactFitsAndTranslatesEveryWrappedLine) {
+  const std::unique_ptr<sampan::node::Tree> exact_tree = analyze_source(
+      "page { row { width: 210px gap: 10px box { width: 100px height: "
+      "10px } box { width: 100px height: 10px } } }");
+  ASSERT_NE(exact_tree, nullptr);
+  const std::unique_ptr<sampan::layout::LayoutBox> exact_root =
+      sampan::layout::build(
+          *exact_tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(exact_root, nullptr);
+  const sampan::layout::LayoutBox &exact_row = box_at(*exact_root, 0);
+  EXPECT_DOUBLE_EQ(box_at(exact_row, 1).dimensions.content.x, 110.0);
+  EXPECT_DOUBLE_EQ(box_at(exact_row, 1).dimensions.content.y, 0.0);
+  EXPECT_DOUBLE_EQ(exact_row.dimensions.content.height, 10.0);
+
+  const std::unique_ptr<sampan::node::Tree> wrapped_tree =
+      analyze_source("page { row { width: 130px gap: 10px "
+                     "box { width: 60px height: 10px } "
+                     "box { width: 60px height: 10px } "
+                     "box { width: 60px height: 10px } "
+                     "box { width: 60px height: 10px } "
+                     "box { width: 60px height: 10px } } }");
+  ASSERT_NE(wrapped_tree, nullptr);
+  const std::unique_ptr<sampan::layout::LayoutBox> wrapped_root =
+      sampan::layout::build(
+          *wrapped_tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(wrapped_root, nullptr);
+  const sampan::layout::LayoutBox &wrapped_row = box_at(*wrapped_root, 0);
+  EXPECT_DOUBLE_EQ(box_at(wrapped_row, 2).dimensions.content.y, 20.0);
+  EXPECT_DOUBLE_EQ(box_at(wrapped_row, 3).dimensions.content.x, 70.0);
+  EXPECT_DOUBLE_EQ(box_at(wrapped_row, 3).dimensions.content.y, 20.0);
+  EXPECT_DOUBLE_EQ(box_at(wrapped_row, 4).dimensions.content.x, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(wrapped_row, 4).dimensions.content.y, 40.0);
+  EXPECT_DOUBLE_EQ(wrapped_row.dimensions.content.height, 50.0);
+}
+
+TEST(Layout, AlignsRowItemsWithinEachLine) {
+  const std::unique_ptr<sampan::node::Tree> centered_tree = analyze_source(
+      "page { row { align: \"center\" box { width: 50px height: 20px } "
+      "box { width: 50px height: 40px } } }");
+  ASSERT_NE(centered_tree, nullptr);
+  const std::unique_ptr<sampan::layout::LayoutBox> centered_root =
+      sampan::layout::build(
+          *centered_tree,
+          {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(centered_root, nullptr);
+  const sampan::layout::LayoutBox &centered_row = box_at(*centered_root, 0);
+  EXPECT_DOUBLE_EQ(box_at(centered_row, 0).dimensions.content.y, 10.0);
+  EXPECT_DOUBLE_EQ(box_at(centered_row, 1).dimensions.content.y, 0.0);
+
+  const std::unique_ptr<sampan::node::Tree> ended_tree = analyze_source(
+      "page { row { align: \"end\" box { width: 50px height: 20px } "
+      "box { width: 50px height: 40px } } }");
+  ASSERT_NE(ended_tree, nullptr);
+  const std::unique_ptr<sampan::layout::LayoutBox> ended_root =
+      sampan::layout::build(
+          *ended_tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(ended_root, nullptr);
+  const sampan::layout::LayoutBox &ended_row = box_at(*ended_root, 0);
+  EXPECT_DOUBLE_EQ(box_at(ended_row, 0).dimensions.content.y, 20.0);
+  EXPECT_DOUBLE_EQ(box_at(ended_row, 1).dimensions.content.y, 0.0);
+}
+
+TEST(Layout, AlignsWrappedLinesAndKeepsOversizedItems) {
+  const std::unique_ptr<sampan::node::Tree> aligned_tree =
+      analyze_source("page { row { width: 130px gap: 10px align: \"end\" "
+                     "box { width: 60px height: 10px } "
+                     "box { width: 60px height: 20px } "
+                     "box { width: 60px height: 30px } "
+                     "box { width: 60px height: 10px } } }");
+  ASSERT_NE(aligned_tree, nullptr);
+  const std::unique_ptr<sampan::layout::LayoutBox> aligned_root =
+      sampan::layout::build(
+          *aligned_tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(aligned_root, nullptr);
+  const sampan::layout::LayoutBox &aligned_row = box_at(*aligned_root, 0);
+  EXPECT_DOUBLE_EQ(box_at(aligned_row, 0).dimensions.content.y, 10.0);
+  EXPECT_DOUBLE_EQ(box_at(aligned_row, 1).dimensions.content.y, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(aligned_row, 2).dimensions.content.y, 30.0);
+  EXPECT_DOUBLE_EQ(box_at(aligned_row, 3).dimensions.content.y, 50.0);
+  EXPECT_DOUBLE_EQ(aligned_row.dimensions.content.height, 60.0);
+
+  const std::unique_ptr<sampan::node::Tree> oversized_tree =
+      analyze_source("page { row { width: 100px gap: 10px "
+                     "box { width: 150px height: 10px } "
+                     "box { width: 20px height: 20px } } }");
+  ASSERT_NE(oversized_tree, nullptr);
+  const std::unique_ptr<sampan::layout::LayoutBox> oversized_root =
+      sampan::layout::build(
+          *oversized_tree,
+          {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(oversized_root, nullptr);
+  const sampan::layout::LayoutBox &oversized_row = box_at(*oversized_root, 0);
+  EXPECT_DOUBLE_EQ(box_at(oversized_row, 0).dimensions.content.x, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(oversized_row, 0).dimensions.content.y, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(oversized_row, 1).dimensions.content.x, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(oversized_row, 1).dimensions.content.y, 20.0);
+  EXPECT_DOUBLE_EQ(oversized_row.dimensions.content.height, 40.0);
+}
+
+TEST(Layout, UsesIntrinsicWidthsForRowLeavesAndText) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { row { \"Hi\" spacer { size: 10px } text { content: \"AB\" "
+      "} } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &row = box_at(*root, 0);
+  ASSERT_EQ(row.items.size(), 3);
+
+  EXPECT_DOUBLE_EQ(text_at(row, 0).dimensions.width, 17.6);
+  EXPECT_DOUBLE_EQ(box_at(row, 1).dimensions.content.x, 17.6);
+  EXPECT_DOUBLE_EQ(box_at(row, 1).dimensions.content.width, 10.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 1).dimensions.content.height, 0.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.x, 27.6);
+  EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.width, 17.6);
+}
+
+TEST(Layout, MatchesLayoutGoldens) {
+  constexpr std::array<std::string_view, 8> fixtures{
+      "sample",
+      "nested",
+      "row_wrapping",
+      "row_exact_fit",
+      "row_oversized_item",
+      "row_wrapped_alignment",
+      "asymmetric_edges",
+      "empty_and_spacers",
+  };
+
+  for (const std::string_view fixture : fixtures) {
+    const std::string fixture_path =
+        "/tests/fixtures/layout/" + std::string{fixture} + ".yl";
+    const std::string golden_path =
+        "/tests/golden/layout/" + std::string{fixture} + ".layout.txt";
     const std::unique_ptr<sampan::node::Tree> tree =
-        analyze_source(read_file(std::string{fixture_path}));
+        analyze_source(read_file(fixture_path));
     ASSERT_NE(tree, nullptr) << fixture_path;
 
     const std::unique_ptr<sampan::layout::LayoutBox> root =
         sampan::layout::build(
             *tree, {.x = 0.0, .y = 0.0, .width = 1024.0, .height = 768.0});
     ASSERT_NE(root, nullptr) << fixture_path;
-    EXPECT_EQ(sampan::layout::dump(*root), read_file(std::string{golden_path}))
+    EXPECT_EQ(sampan::layout::dump(*root), read_file(golden_path))
         << fixture_path;
   }
 }
