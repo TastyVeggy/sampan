@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "sampan/analyze/analyzer.hpp"
+#include "sampan/app/application.hpp"
 #include "sampan/ast/dump.hpp"
 #include "sampan/lex/lexer.hpp"
 #include "sampan/node/dump.hpp"
@@ -24,7 +25,8 @@ void print_usage(std::ostream &output) {
          << "  version    Print the Sampan version\n"
          << "  lex <path> Dump Yuloh tokens\n"
          << "  parse <path> Dump the Yuloh AST\n"
-         << "  analyze <path> Dump the validated Yuloh node tree\n";
+         << "  analyze <path> Dump the validated Yuloh node tree\n"
+         << "  view <path> Display a local Yuloh document\n";
 }
 
 } // namespace
@@ -117,6 +119,9 @@ int main(const int argc, char *argv[]) {
                 << diagnostic.message << "\n";
     }
     return analyzed.diagnostics.empty() ? kSuccess : kUserProgramError;
+  }
+  if (argc == 3 && std::string_view{argv[1]} == "view") {
+    return sampan::app::run(argc, argv, argv[2]);
   }
   print_usage(argc == 1 ? std::cout : std::cerr);
   return argc == 1 ? kSuccess : kCliMisuse;
