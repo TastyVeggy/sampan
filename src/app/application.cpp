@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QFileInfo>
 #include <QFont>
+#include <QFontMetricsF>
 #include <QPainter>
 #include <QRectF>
 #include <QString>
@@ -16,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "sampan/analyze/analyzer.hpp"
@@ -62,20 +64,49 @@ length_property(const node::Node &source,
   return length == nullptr ? std::nullopt : std::optional{length->pixels};
 }
 
-[[nodiscard]] std::optional<std::string>
-string_property(const node::Node &source, const node::PropertyId property_id) {
-  const node::Property *property = find_property(source, property_id);
-  if (property == nullptr) {
-    return std::nullopt;
-  }
-  const auto *text = std::get_if<std::string>(&property->value);
-  return text == nullptr ? std::nullopt : std::optional{*text};
-}
-
 [[nodiscard]] QColor to_qcolor(const node::Color color) {
   return {static_cast<int>(color.red), static_cast<int>(color.green),
           static_cast<int>(color.blue)};
 }
+
+[[nodiscard]] layout::TextStyle text_style(const node::Node &owner) {
+  const double default_size =
+      owner.kind == node::NodeKind::Heading ? 28.0 : 16.0;
+  return {.font_size =
+              std::max(1.0, length_property(owner, node::PropertyId::Size)
+                                .value_or(default_size)),
+          .bold = owner.kind == node::NodeKind::Heading};
+}
+
+[[nodiscard]] QFont font_for_style(QFont font, const layout::TextStyle &style) {
+  font.setPixelSize(static_cast<int>(style.font_size));
+  font.setBold(style.bold);
+  return font;
+}
+
+class QtTextMetrics final : public layout::TextMetrics {
+public:
+  QtTextMetrics(QFont base_font, const QPaintDevice *device)
+      : base_font_{std::move(base_font)}, device_{device} {
+  }
+
+  [[nodiscard]] double width(const std::string_view text,
+                             const layout::TextStyle &style) const override {
+    const QFontMetricsF metrics{font_for_style(base_font_, style), device_};
+    return metrics.horizontalAdvance(
+        QString::fromUtf8(text.data(), static_cast<qsizetype>(text.size())));
+  }
+
+  [[nodiscard]] double
+  line_height(const layout::TextStyle &style) const override {
+    const QFontMetricsF metrics{font_for_style(base_font_, style), device_};
+    return metrics.height();
+  }
+
+private:
+  QFont base_font_;
+  const QPaintDevice *device_;
+};
 
 [[nodiscard]] QRectF padding_rect(const layout::Dimensions &dimensions) {
   const layout::Rect &content = dimensions.content;
@@ -112,25 +143,20 @@ void paint_border(QPainter &painter, const layout::Dimensions &dimensions,
 }
 
 void paint_text(QPainter &painter, const node::Node &owner,
-                const layout::Rect &dimensions, const std::string &text) {
-  QFont font = painter.font();
-  const double default_size =
-      owner.kind == node::NodeKind::Heading ? 28.0 : 16.0;
-  font.setPixelSize(static_cast<int>(std::max(
-      1.0,
-      length_property(owner, node::PropertyId::Size).value_or(default_size))));
-  font.setBold(owner.kind == node::NodeKind::Heading);
-  painter.setFont(font);
+                const layout::Rect &dimensions, const std::string &text,
+                const QFont &base_font) {
+  painter.setFont(font_for_style(base_font, text_style(owner)));
   painter.setPen(
       to_qcolor(color_property(owner, node::PropertyId::Color)
                     .value_or(node::Color{.red = 0, .green = 0, .blue = 0})));
   painter.drawText(
       QRectF{dimensions.x, dimensions.y, dimensions.width, dimensions.height},
-      Qt::AlignLeft | Qt::AlignVCenter | Qt::TextWordWrap,
+      Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine | Qt::TextDontClip,
       QString::fromStdString(text));
 }
 
-void paint_box(QPainter &painter, const layout::LayoutBox &box) {
+void paint_box(QPainter &painter, const layout::LayoutBox &box,
+               const QFont &base_font) {
   const node::Node &source = *box.node;
   if (const std::optional<node::Color> background =
           color_property(source, node::PropertyId::Background);
@@ -144,19 +170,17 @@ void paint_box(QPainter &painter, const layout::LayoutBox &box) {
     paint_border(painter, box.dimensions, to_qcolor(*border));
   }
 
-  if (const std::optional<std::string> text =
-          string_property(source, node::PropertyId::Content);
-      text.has_value()) {
-    paint_text(painter, source, box.dimensions.content, *text);
-  }
-
   for (const layout::LayoutItem &item : box.items) {
     if (const auto *text = std::get_if<layout::LayoutText>(&item);
         text != nullptr) {
-      paint_text(painter, *text->owner, text->dimensions, text->text->value);
+      for (const layout::LayoutTextLine &line : text->lines) {
+        paint_text(painter, *text->owner, line.dimensions, line.text,
+                   base_font);
+      }
       continue;
     }
-    paint_box(painter, *std::get<std::unique_ptr<layout::LayoutBox>>(item));
+    paint_box(painter, *std::get<std::unique_ptr<layout::LayoutBox>>(item),
+              base_font);
   }
 }
 
@@ -184,13 +208,17 @@ protected:
     QPainter painter{this};
     painter.setRenderHint(QPainter::Antialiasing);
     painter.fillRect(rect(), Qt::white);
+    const QFont base_font = painter.font();
+    const QtTextMetrics text_metrics{base_font, painter.device()};
     const std::unique_ptr<layout::LayoutBox> root =
-        layout::build(*tree_, {.x = 0.0,
-                               .y = 0.0,
-                               .width = static_cast<double>(width()),
-                               .height = static_cast<double>(height())});
+        layout::build(*tree_,
+                      {.x = 0.0,
+                       .y = 0.0,
+                       .width = static_cast<double>(width()),
+                       .height = static_cast<double>(height())},
+                      text_metrics);
     if (root != nullptr) {
-      paint_box(painter, *root);
+      paint_box(painter, *root, base_font);
     }
   }
 

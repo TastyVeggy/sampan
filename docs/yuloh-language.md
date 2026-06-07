@@ -106,10 +106,20 @@ depend on the node's flow direction:
 - `"center"`
 - `"end"`
 
+Other `align` or `justify` strings are semantic errors.
 
-Text, heading, button, and direct text items without an explicit `width` use an intrinsic width. An
-auto-width container child occupies the available line width. 
-A spacer adds gap of `size` along its parent's main axis
+Text, heading, button, and direct text items without an explicit `width` use
+an intrinsic width. An auto-width container child occupies the available line
+width. A spacer adds a gap of `size` along its parent's main axis.
+
+Text wraps when its measured width exceeds the available content width. Line
+breaking prefers spaces, collapses consecutive horizontal whitespace, and
+does not retain whitespace at a line boundary. `\n` forces a new line and
+consecutive newlines create empty lines. A word wider than an empty line is
+split at UTF-8 code-point boundaries. Wrapped lines increase the text item's
+automatic height; an explicit node height does not discard lines and may
+therefore produce overflow.
+
 ## Grammar
 
 This grammar uses `::=` for definitions, `|` for alternatives, `*` for zero

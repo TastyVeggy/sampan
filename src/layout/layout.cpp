@@ -6,6 +6,8 @@
 #include <string>
 #include <string_view>
 
+#include "text_layout.hpp"
+
 namespace sampan::layout {
 namespace {
 
@@ -66,33 +68,42 @@ edges(const node::Node &source, const node::PropertyId shorthand,
 [[nodiscard]] double font_size(const node::Node &owner) noexcept {
   const double default_size =
       owner.kind == node::NodeKind::Heading ? 28.0 : 16.0;
-  return length_property(owner, node::PropertyId::Size).value_or(default_size);
+  return std::max(
+      1.0,
+      length_property(owner, node::PropertyId::Size).value_or(default_size));
 }
 
-[[nodiscard]] double text_height(const node::Node &owner) noexcept {
-  return font_size(owner) * 1.2;
+[[nodiscard]] TextStyle text_style(const node::Node &owner) noexcept {
+  return {.font_size = font_size(owner),
+          .bold = owner.kind == node::NodeKind::Heading};
+}
+
+[[nodiscard]] double text_height(const node::Node &owner,
+                                 const TextMetrics &metrics) {
+  return metrics.line_height(text_style(owner));
 }
 
 [[nodiscard]] double text_width(const node::Node &owner,
-                                const std::string_view text) noexcept {
-  // Tihs is just estimate. The real measurement will come from rendering
-  // backend
-  return static_cast<double>(text.size()) * font_size(owner) * 0.55;
+                                const std::string_view text,
+                                const TextMetrics &metrics) {
+  return detail::unwrapped_width(text, text_style(owner), metrics);
 }
 
-[[nodiscard]] double direct_text_width(const node::Node &source) noexcept {
+[[nodiscard]] double direct_text_width(const node::Node &source,
+                                       const TextMetrics &metrics) {
   double width = 0.0;
   for (const node::Item &item : source.items) {
     if (const auto *text = std::get_if<node::TextChild>(&item);
         text != nullptr) {
-      width = std::max(width, text_width(source, text->value));
+      width = std::max(width, text_width(source, text->value, metrics));
     }
   }
   return width;
 }
 
 [[nodiscard]] std::optional<double>
-intrinsic_width(const node::Node &source, const bool parent_is_row) noexcept {
+intrinsic_width(const node::Node &source, const bool parent_is_row,
+                const TextMetrics &metrics) {
   // A missing intrinsic width means that an automatic-width node behaves like
   // a container and consumes the width offered by its parent.
   switch (source.kind) {
@@ -101,11 +112,11 @@ intrinsic_width(const node::Node &source, const bool parent_is_row) noexcept {
     if (const std::string *content =
             string_property(source, node::PropertyId::Content);
         content != nullptr) {
-      return text_width(source, *content);
+      return text_width(source, *content, metrics);
     }
-    return direct_text_width(source);
+    return direct_text_width(source, metrics);
   case node::NodeKind::Button:
-    return direct_text_width(source);
+    return direct_text_width(source, metrics);
   case node::NodeKind::Spacer:
     if (parent_is_row) {
       return length_property(source, node::PropertyId::Size).value_or(0.0);
@@ -121,11 +132,12 @@ intrinsic_width(const node::Node &source, const bool parent_is_row) noexcept {
 }
 
 [[nodiscard]] double intrinsic_height(const node::Node &source,
-                                      const bool parent_is_row) noexcept {
+                                      const bool parent_is_row,
+                                      const TextMetrics &metrics) {
   switch (source.kind) {
   case node::NodeKind::Text:
   case node::NodeKind::Heading:
-    return text_height(source);
+    return text_height(source, metrics);
   case node::NodeKind::Button:
     return 36.0;
   case node::NodeKind::Spacer:
@@ -234,6 +246,10 @@ void translate_item(LayoutItem &item, const double x, const double y) {
   if (auto *text = std::get_if<LayoutText>(&item); text != nullptr) {
     text->dimensions.x += x;
     text->dimensions.y += y;
+    for (LayoutTextLine &line : text->lines) {
+      line.dimensions.x += x;
+      line.dimensions.y += y;
+    }
     return;
   }
   translate_box(*std::get<std::unique_ptr<LayoutBox>>(item), x, y);
@@ -252,28 +268,48 @@ void justify_items(std::vector<LayoutItem> &items, const std::size_t begin,
 [[nodiscard]] std::unique_ptr<LayoutBox>
 layout_node(const node::Node &source, const Rect &containing_block,
             bool fills_viewport_height, AutoWidth auto_width,
-            bool parent_is_row);
+            bool parent_is_row, const TextMetrics &metrics);
 
 [[nodiscard]] std::optional<LayoutItem>
 layout_flow_item(const node::Item &item, const node::Node &owner,
                  const Rect &containing_block, const AutoWidth auto_width,
-                 const bool parent_is_row) {
+                 const bool parent_is_row, const TextMetrics &metrics) {
+  const std::string *text = nullptr;
+  if (const auto *text_child = std::get_if<node::TextChild>(&item);
+      text_child != nullptr) {
+    text = &text_child->value;
+  } else if (const auto *property = std::get_if<node::Property>(&item);
+             property != nullptr && property->id == node::PropertyId::Content) {
+    text = std::get_if<std::string>(&property->value);
+  }
 
-  // Properties do not participate in flow. Only direct text and child nodes
-  // produce layout items, in the same order in which they appear in the node
-  if (const auto *text = std::get_if<node::TextChild>(&item); text != nullptr) {
-    const double width =
-        auto_width == AutoWidth::FitIntrinsic
-            ? std::min(containing_block.width, text_width(owner, text->value))
-            : containing_block.width;
-    return LayoutText{
-        .text = text,
-        .owner = &owner,
-        .dimensions = {.x = containing_block.x,
-                       .y = containing_block.y,
-                       .width = width,
-                       .height = text_height(owner)},
-    };
+  if (text != nullptr) {
+    detail::WrappedText wrapped = detail::wrap_text(
+        *text, text_style(owner), containing_block.width, metrics);
+    const double width = auto_width == AutoWidth::FillAvailable
+                             ? containing_block.width
+                             : wrapped.width;
+
+    std::vector<LayoutTextLine> lines;
+    lines.reserve(wrapped.lines.size());
+    const double height = text_height(owner, metrics);
+    for (std::size_t index = 0; index < wrapped.lines.size(); ++index) {
+      detail::WrappedLine &line = wrapped.lines[index];
+      lines.push_back({.text = std::move(line.text),
+                       .dimensions = {.x = containing_block.x,
+                                      .y = containing_block.y +
+                                           static_cast<double>(index) * height,
+                                      .width = line.width,
+                                      .height = height}});
+    }
+
+    return LayoutText{.text = *text,
+                      .owner = &owner,
+                      .dimensions = {.x = containing_block.x,
+                                     .y = containing_block.y,
+                                     .width = width,
+                                     .height = wrapped.height},
+                      .lines = std::move(lines)};
   }
 
   const auto *child = std::get_if<node::ChildNode>(&item);
@@ -281,37 +317,33 @@ layout_flow_item(const node::Item &item, const node::Node &owner,
     return std::nullopt;
   }
   return layout_node(*child->value, containing_block, false, auto_width,
-                     parent_is_row);
+                     parent_is_row, metrics);
 }
 
-[[nodiscard]] double layout_vertical_flow(LayoutBox &result,
-                                          const Rect &content,
-                                          const double containing_height,
-                                          const double gap,
-                                          const node::Alignment align) {
+[[nodiscard]] double
+layout_vertical_flow(LayoutBox &result, const Rect &content,
+                     const double containing_height, const double gap,
+                     const node::Alignment align, const TextMetrics &metrics) {
   // next_item_y is the bottom edge of the last laid-out item. The gap is added
   // before each subsequent flow item but not before the first one.
   double next_item_y = content.y;
   bool has_item = false;
   for (const node::Item &source_item : result.node->items) {
-    const bool is_flow_item =
-        std::holds_alternative<node::TextChild>(source_item) ||
-        std::holds_alternative<node::ChildNode>(source_item);
-    if (has_item && is_flow_item) {
-      next_item_y += gap;
-    }
-
     std::optional<LayoutItem> item =
         layout_flow_item(source_item, *result.node,
                          {.x = content.x,
                           .y = next_item_y,
                           .width = content.width,
                           .height = containing_height},
-                         AutoWidth::FitIntrinsic, false);
+                         AutoWidth::FitIntrinsic, false, metrics);
     if (!item.has_value()) {
       continue;
     }
 
+    if (has_item) {
+      next_item_y += gap;
+      translate_item(*item, 0.0, gap);
+    }
     const double free_width = std::max(0.0, content.width - item_width(*item));
     translate_item(*item, alignment_offset(free_width, align), 0.0);
     next_item_y += item_height(*item);
@@ -346,7 +378,8 @@ void finish_row_line(LayoutBox &result, const Rect &content,
                                      const double containing_height,
                                      const double gap,
                                      const node::Alignment align,
-                                     const node::Justification justify) {
+                                     const node::Justification justify,
+                                     const TextMetrics &metrics) {
   const double content_right = content.x + content.width;
 
   double line_y = content.y;      // line_y is the top of the current line
@@ -367,7 +400,7 @@ void finish_row_line(LayoutBox &result, const Rect &content,
                           .y = line_y,
                           .width = content.width,
                           .height = containing_height},
-                         AutoWidth::FitIntrinsic, true);
+                         AutoWidth::FitIntrinsic, true, metrics);
     if (!item.has_value()) {
       continue;
     }
@@ -406,11 +439,10 @@ void finish_row_line(LayoutBox &result, const Rect &content,
   return line_y - content.y + line_height;
 }
 
-std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
-                                       const Rect &containing_block,
-                                       const bool fills_viewport_height,
-                                       const AutoWidth auto_width,
-                                       const bool parent_is_row) {
+std::unique_ptr<LayoutBox>
+layout_node(const node::Node &source, const Rect &containing_block,
+            const bool fills_viewport_height, const AutoWidth auto_width,
+            const bool parent_is_row, const TextMetrics &metrics) {
   auto result = std::make_unique<LayoutBox>();
   result->node = &source;
   result->dimensions.margin =
@@ -440,9 +472,9 @@ std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
   // instead shrink to an intrinsic width so several items can share a line.
   double automatic_width = available_width;
   if (auto_width == AutoWidth::FitIntrinsic) {
-    automatic_width = std::min(
-        available_width,
-        intrinsic_width(source, parent_is_row).value_or(available_width));
+    automatic_width = std::min(available_width,
+                               intrinsic_width(source, parent_is_row, metrics)
+                                   .value_or(available_width));
   }
   const double content_width = length_property(source, node::PropertyId::Width)
                                    .value_or(automatic_width);
@@ -461,11 +493,12 @@ std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
   const double flow_height =
       source.kind == node::NodeKind::Row
           ? layout_row_flow(*result, result->dimensions.content,
-                            containing_block.height, gap, align, justify)
+                            containing_block.height, gap, align, justify,
+                            metrics)
           : layout_vertical_flow(*result, result->dimensions.content,
-                                 containing_block.height, gap, align);
+                                 containing_block.height, gap, align, metrics);
 
-  double automatic_height = intrinsic_height(source, parent_is_row);
+  double automatic_height = intrinsic_height(source, parent_is_row, metrics);
   automatic_height = std::max(automatic_height, flow_height);
   if (fills_viewport_height) {
     const double vertical_edges = margin.top + border_size.top + padding.top +
@@ -488,12 +521,13 @@ std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
 
 } // namespace
 
-std::unique_ptr<LayoutBox> build(const node::Tree &tree, const Rect &viewport) {
+std::unique_ptr<LayoutBox> build(const node::Tree &tree, const Rect &viewport,
+                                 const TextMetrics &metrics) {
   if (tree.root == nullptr) {
     return nullptr;
   }
   return layout_node(*tree.root, viewport, true, AutoWidth::FillAvailable,
-                     false);
+                     false, metrics);
 }
 
 } // namespace sampan::layout

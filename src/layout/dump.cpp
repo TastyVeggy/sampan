@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <memory>
 #include <sstream>
+#include <string_view>
 
 namespace sampan::layout {
 namespace {
@@ -11,7 +12,7 @@ void write_indent(std::ostringstream &output, const std::size_t depth) {
   output << std::string(depth * 2, ' ');
 }
 
-void write_quoted(std::ostringstream &output, const std::string &value) {
+void write_quoted(std::ostringstream &output, const std::string_view value) {
   output << '"';
   for (const char character : value) {
     switch (character) {
@@ -74,10 +75,18 @@ void write_box(std::ostringstream &output, const LayoutBox &box,
     if (const auto *text = std::get_if<LayoutText>(&item); text != nullptr) {
       write_indent(output, depth + 1);
       output << "Text ";
-      write_quoted(output, text->text->value);
+      write_quoted(output, text->text);
       output << " ";
       write_rect(output, text->dimensions);
       output << "\n";
+      for (const LayoutTextLine &line : text->lines) {
+        write_indent(output, depth + 2);
+        output << "Line ";
+        write_quoted(output, line.text);
+        output << " ";
+        write_rect(output, line.dimensions);
+        output << "\n";
+      }
       continue;
     }
     write_box(output, *std::get<std::unique_ptr<LayoutBox>>(item), depth + 1);

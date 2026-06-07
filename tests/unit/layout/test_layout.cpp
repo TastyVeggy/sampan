@@ -15,6 +15,20 @@
 
 namespace {
 
+class TestTextMetrics final : public sampan::layout::TextMetrics {
+public:
+  [[nodiscard]] double
+  width(const std::string_view text,
+        const sampan::layout::TextStyle & /* style */) const override {
+    return static_cast<double>(text.size()) * 10.0;
+  }
+
+  [[nodiscard]] double
+  line_height(const sampan::layout::TextStyle & /* style */) const override {
+    return 25.0;
+  }
+};
+
 [[nodiscard]] std::string read_file(const std::string &relative_path) {
   std::ifstream input{std::string{SAMPAN_SOURCE_DIR} + relative_path};
   std::stringstream contents;
@@ -31,6 +45,11 @@ box_at(const sampan::layout::LayoutBox &parent, const std::size_t index) {
 [[nodiscard]] const sampan::layout::LayoutText &
 text_at(const sampan::layout::LayoutBox &parent, const std::size_t index) {
   return std::get<sampan::layout::LayoutText>(parent.items.at(index));
+}
+
+[[nodiscard]] const sampan::layout::LayoutTextLine &
+line_at(const sampan::layout::LayoutText &text, const std::size_t index) {
+  return text.lines.at(index);
 }
 
 [[nodiscard]] std::unique_ptr<sampan::node::Tree>
@@ -409,8 +428,125 @@ TEST(Layout, AlignsAndJustifiesButtonText) {
   EXPECT_NEAR(label.dimensions.y, 10.4, 1e-9);
 }
 
+TEST(Layout, WrapsTextAtWordBoundaries) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { box { width: 62px \"one   two three\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &box = box_at(*root, 0);
+  const sampan::layout::LayoutText &text = text_at(box, 0);
+
+  ASSERT_EQ(text.lines.size(), 2);
+  EXPECT_EQ(line_at(text, 0).text, "one two");
+  EXPECT_EQ(line_at(text, 1).text, "three");
+  EXPECT_DOUBLE_EQ(text.dimensions.width, 61.6);
+  EXPECT_DOUBLE_EQ(text.dimensions.height, 38.4);
+  EXPECT_DOUBLE_EQ(box.dimensions.content.height, 38.4);
+}
+
+TEST(Layout, SplitsLongWordsWithoutSplittingUtf8CodePoints) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { stack { box { width: 27px \"abcdefg\" } "
+                     "box { width: 18px \"ééé\" } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &stack = box_at(*root, 0);
+  const sampan::layout::LayoutText &ascii = text_at(box_at(stack, 0), 0);
+  const sampan::layout::LayoutText &utf8 = text_at(box_at(stack, 1), 0);
+
+  ASSERT_EQ(ascii.lines.size(), 3);
+  EXPECT_EQ(line_at(ascii, 0).text, "abc");
+  EXPECT_EQ(line_at(ascii, 1).text, "def");
+  EXPECT_EQ(line_at(ascii, 2).text, "g");
+  ASSERT_EQ(utf8.lines.size(), 2);
+  EXPECT_EQ(line_at(utf8, 0).text, "éé");
+  EXPECT_EQ(line_at(utf8, 1).text, "é");
+}
+
+TEST(Layout, PreservesHardBreaksAndEmptyLines) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { box { width: 100px \"one\\n\\ntwo\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutText &text = text_at(box_at(*root, 0), 0);
+
+  ASSERT_EQ(text.lines.size(), 3);
+  EXPECT_EQ(line_at(text, 0).text, "one");
+  EXPECT_EQ(line_at(text, 1).text, "");
+  EXPECT_EQ(line_at(text, 2).text, "two");
+  EXPECT_DOUBLE_EQ(line_at(text, 1).dimensions.y, 19.2);
+  EXPECT_DOUBLE_EQ(text.dimensions.height, 57.6);
+}
+
+TEST(Layout, LaysOutContentPropertiesAndEmptyText) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { stack { text { width: 44px content: \"hello world\" } "
+      "text { width: 10px content: \"\" } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &stack = box_at(*root, 0);
+  const sampan::layout::LayoutBox &wrapped_box = box_at(stack, 0);
+  const sampan::layout::LayoutText &wrapped = text_at(wrapped_box, 0);
+  const sampan::layout::LayoutText &empty = text_at(box_at(stack, 1), 0);
+
+  ASSERT_EQ(wrapped.lines.size(), 2);
+  EXPECT_EQ(line_at(wrapped, 0).text, "hello");
+  EXPECT_EQ(line_at(wrapped, 1).text, "world");
+  EXPECT_DOUBLE_EQ(wrapped_box.dimensions.content.height, 38.4);
+  ASSERT_EQ(empty.lines.size(), 1);
+  EXPECT_TRUE(line_at(empty, 0).text.empty());
+  EXPECT_DOUBLE_EQ(empty.dimensions.width, 0.0);
+  EXPECT_DOUBLE_EQ(empty.dimensions.height, 19.2);
+}
+
+TEST(Layout, ExplicitHeightDoesNotDiscardWrappedLines) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { text { width: 44px height: 10px content: \"hello world\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &text_box = box_at(*root, 0);
+  const sampan::layout::LayoutText &text = text_at(text_box, 0);
+
+  EXPECT_DOUBLE_EQ(text_box.dimensions.content.height, 10.0);
+  EXPECT_DOUBLE_EQ(text.dimensions.height, 38.4);
+  ASSERT_EQ(text.lines.size(), 2);
+}
+
+TEST(Layout, UsesTheProvidedTextMetricsForWrappingAndLineHeight) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { box { width: 25px \"abcd\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const TestTextMetrics metrics;
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0}, metrics);
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutText &text = text_at(box_at(*root, 0), 0);
+
+  ASSERT_EQ(text.lines.size(), 2);
+  EXPECT_EQ(line_at(text, 0).text, "ab");
+  EXPECT_EQ(line_at(text, 1).text, "cd");
+  EXPECT_DOUBLE_EQ(text.dimensions.width, 20.0);
+  EXPECT_DOUBLE_EQ(text.dimensions.height, 50.0);
+}
+
 TEST(Layout, MatchesLayoutGoldens) {
-  constexpr std::array<std::string_view, 9> fixtures{
+  constexpr std::array<std::string_view, 10> fixtures{
       "sample",
       "nested",
       "row_wrapping",
@@ -420,6 +556,7 @@ TEST(Layout, MatchesLayoutGoldens) {
       "asymmetric_edges",
       "empty_and_spacers",
       "flow_alignment",
+      "text_wrapping",
   };
 
   for (const std::string_view fixture : fixtures) {

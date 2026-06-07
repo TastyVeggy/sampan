@@ -1,9 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
+#include "sampan/layout/text_metrics.hpp"
 #include "sampan/node/node.hpp"
 
 namespace sampan::layout {
@@ -29,10 +32,16 @@ struct Dimensions {
   EdgeSizes margin;
 };
 
+struct LayoutTextLine {
+  std::string text;
+  Rect dimensions;
+};
+
 struct LayoutText {
-  const node::TextChild *text;
+  std::string_view text;
   const node::Node *owner;
   Rect dimensions;
+  std::vector<LayoutTextLine> lines;
 };
 
 struct LayoutBox;
@@ -44,7 +53,8 @@ struct LayoutBox {
   std::vector<LayoutItem> items;
 };
 
-[[nodiscard]] std::unique_ptr<LayoutBox> build(const node::Tree &tree,
-                                               const Rect &viewport);
+[[nodiscard]] std::unique_ptr<LayoutBox>
+build(const node::Tree &tree, const Rect &viewport,
+      const TextMetrics &metrics = fixed_text_metrics());
 
 } // namespace sampan::layout

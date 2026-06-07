@@ -15,21 +15,25 @@ Layout
         border top=0 right=0 bottom=0 left=0
         margin top=0 right=0 bottom=0 left=0
         Text "First" x=0 y=10 width=44 height=19.2
+          Line "First" x=0 y=10 width=44 height=19.2
       Box box
         content x=70 y=0 width=60 height=20
         padding top=0 right=0 bottom=0 left=0
         border top=0 right=0 bottom=0 left=0
         margin top=0 right=0 bottom=0 left=0
         Text "Second" x=70 y=0 width=52.8 height=19.2
+          Line "Second" x=70 y=0 width=52.8 height=19.2
       Box box
         content x=0 y=30 width=60 height=30
         padding top=0 right=0 bottom=0 left=0
         border top=0 right=0 bottom=0 left=0
         margin top=0 right=0 bottom=0 left=0
         Text "Third" x=0 y=30 width=44 height=19.2
+          Line "Third" x=0 y=30 width=44 height=19.2
       Box box
         content x=70 y=50 width=60 height=10
         padding top=0 right=0 bottom=0 left=0
         border top=0 right=0 bottom=0 left=0
         margin top=0 right=0 bottom=0 left=0
         Text "Fourth" x=70 y=50 width=52.8 height=19.2
+          Line "Fourth" x=70 y=50 width=52.8 height=19.2
