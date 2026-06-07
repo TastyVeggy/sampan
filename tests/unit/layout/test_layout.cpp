@@ -130,6 +130,99 @@ TEST(Layout, UsesIntrinsicTextAndSpacerHeights) {
   EXPECT_DOUBLE_EQ(stack.dimensions.content.height, 36.0);
 }
 
+TEST(Layout, SizesHeadingsFromTheirTextStyle) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { stack { heading { content: \"Hi\" } "
+                     "heading { content: \"Hi\" size: 10px } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &stack = box_at(*root, 0);
+  const sampan::layout::LayoutBox &default_heading = box_at(stack, 0);
+  const sampan::layout::LayoutBox &sized_heading = box_at(stack, 1);
+
+  EXPECT_NEAR(default_heading.dimensions.content.width, 30.8, 1e-9);
+  EXPECT_NEAR(default_heading.dimensions.content.height, 33.6, 1e-9);
+  EXPECT_NEAR(sized_heading.dimensions.content.width, 11.0, 1e-9);
+  EXPECT_NEAR(sized_heading.dimensions.content.height, 12.0, 1e-9);
+  EXPECT_NEAR(sized_heading.dimensions.content.y, 33.6, 1e-9);
+}
+
+TEST(Layout, SizesButtonsFromTextAndDefaultPadding) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { row { button {} button { \"OK\" } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const TestTextMetrics metrics;
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0}, metrics);
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &row = box_at(*root, 0);
+  const sampan::layout::LayoutBox &empty_button = box_at(row, 0);
+  const sampan::layout::LayoutBox &labelled_button = box_at(row, 1);
+
+  EXPECT_DOUBLE_EQ(empty_button.dimensions.padding.top, 8.0);
+  EXPECT_DOUBLE_EQ(empty_button.dimensions.padding.right, 12.0);
+  EXPECT_DOUBLE_EQ(empty_button.dimensions.padding.bottom, 8.0);
+  EXPECT_DOUBLE_EQ(empty_button.dimensions.padding.left, 12.0);
+  EXPECT_DOUBLE_EQ(empty_button.dimensions.content.width, 0.0);
+  EXPECT_DOUBLE_EQ(empty_button.dimensions.content.height, 25.0);
+
+  EXPECT_DOUBLE_EQ(labelled_button.dimensions.content.x, 36.0);
+  EXPECT_DOUBLE_EQ(labelled_button.dimensions.content.y, 8.0);
+  EXPECT_DOUBLE_EQ(labelled_button.dimensions.content.width, 20.0);
+  EXPECT_DOUBLE_EQ(labelled_button.dimensions.content.height, 25.0);
+  EXPECT_DOUBLE_EQ(row.dimensions.content.height, 41.0);
+}
+
+TEST(Layout, LetsAuthoredButtonPaddingOverrideDefaults) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { button { padding: 3px padding-left: 7px \"OK\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const TestTextMetrics metrics;
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0}, metrics);
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &button = box_at(*root, 0);
+
+  EXPECT_DOUBLE_EQ(button.dimensions.padding.top, 3.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.padding.right, 3.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.padding.bottom, 3.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.padding.left, 7.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.content.x, 7.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.content.y, 3.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.content.width, 20.0);
+  EXPECT_DOUBLE_EQ(button.dimensions.content.height, 25.0);
+}
+
+TEST(Layout, SizesSpacersAlongTheirParentMainAxis) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { stack { width: 100px spacer { size: 12px } "
+      "row { spacer { size: 15px } spacer { size: 0px width: 4px "
+      "height: 6px } } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &stack = box_at(*root, 0);
+  const sampan::layout::LayoutBox &vertical_spacer = box_at(stack, 0);
+  const sampan::layout::LayoutBox &row = box_at(stack, 1);
+  const sampan::layout::LayoutBox &horizontal_spacer = box_at(row, 0);
+  const sampan::layout::LayoutBox &explicit_spacer = box_at(row, 1);
+
+  EXPECT_DOUBLE_EQ(vertical_spacer.dimensions.content.width, 100.0);
+  EXPECT_DOUBLE_EQ(vertical_spacer.dimensions.content.height, 12.0);
+  EXPECT_DOUBLE_EQ(horizontal_spacer.dimensions.content.width, 15.0);
+  EXPECT_DOUBLE_EQ(horizontal_spacer.dimensions.content.height, 0.0);
+  EXPECT_DOUBLE_EQ(explicit_spacer.dimensions.content.x, 15.0);
+  EXPECT_DOUBLE_EQ(explicit_spacer.dimensions.content.width, 4.0);
+  EXPECT_DOUBLE_EQ(explicit_spacer.dimensions.content.height, 6.0);
+}
+
 TEST(Layout, PlacesTextAndChildNodesInSourceOrder) {
   const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
       "page { box { \"Before\" box { height: 50px } \"After\" } }");
@@ -424,8 +517,8 @@ TEST(Layout, AlignsAndJustifiesButtonText) {
   const sampan::layout::LayoutText &label = text_at(button, 0);
 
   EXPECT_DOUBLE_EQ(label.dimensions.width, 17.6);
-  EXPECT_NEAR(label.dimensions.x, 41.2, 1e-9);
-  EXPECT_NEAR(label.dimensions.y, 10.4, 1e-9);
+  EXPECT_NEAR(label.dimensions.x, 53.2, 1e-9);
+  EXPECT_NEAR(label.dimensions.y, 18.4, 1e-9);
 }
 
 TEST(Layout, WrapsTextAtWordBoundaries) {
@@ -546,7 +639,7 @@ TEST(Layout, UsesTheProvidedTextMetricsForWrappingAndLineHeight) {
 }
 
 TEST(Layout, MatchesLayoutGoldens) {
-  constexpr std::array<std::string_view, 10> fixtures{
+  constexpr std::array<std::string_view, 11> fixtures{
       "sample",
       "nested",
       "row_wrapping",
@@ -557,6 +650,7 @@ TEST(Layout, MatchesLayoutGoldens) {
       "empty_and_spacers",
       "flow_alignment",
       "text_wrapping",
+      "leaf_intrinsic_sizing",
   };
 
   for (const std::string_view fixture : fixtures) {

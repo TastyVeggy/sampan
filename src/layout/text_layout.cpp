@@ -10,6 +10,9 @@
 namespace sampan::layout {
 namespace {
 
+constexpr double kFixedAdvancePerFontSize = 0.55;
+constexpr double kFixedLineHeightPerFontSize = 1.2;
+
 [[nodiscard]] std::size_t code_point_size(const std::string_view text,
                                           const std::size_t offset) noexcept {
   const auto first = static_cast<unsigned char>(text[offset]);
@@ -53,11 +56,12 @@ class FixedTextMetrics final : public TextMetrics {
 public:
   [[nodiscard]] double width(const std::string_view text,
                              const TextStyle &style) const override {
-    return static_cast<double>(code_point_count(text)) * style.font_size * 0.55;
+    return static_cast<double>(code_point_count(text)) * style.font_size *
+           kFixedAdvancePerFontSize;
   }
 
   [[nodiscard]] double line_height(const TextStyle &style) const override {
-    return style.font_size * 1.2;
+    return style.font_size * kFixedLineHeightPerFontSize;
   }
 };
 

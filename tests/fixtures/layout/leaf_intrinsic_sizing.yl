@@ -1,0 +1,35 @@
+page {
+  stack {
+    width: 280px
+    padding: 16px
+    gap: 12px
+
+    heading { content: "Intrinsic leaf sizing" }
+    text { content: "Text follows its measured content." }
+
+    row {
+      gap: 10px
+      align: "center"
+
+      button {
+        background: #def
+        border-width: 1px
+        border-color: #579
+        "Continue"
+      }
+
+      spacer { size: 20px }
+
+      button {
+        padding: 4px
+        background: #fed
+        border-width: 1px
+        border-color: #975
+        "Compact"
+      }
+    }
+
+    spacer { size: 16px }
+    text { content: "After the vertical spacer." }
+  }
+}

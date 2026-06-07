@@ -6,12 +6,21 @@
 #include <string>
 #include <string_view>
 
+#include "sampan/layout/defaults.hpp"
+
 #include "text_layout.hpp"
 
 namespace sampan::layout {
 namespace {
 
 enum class AutoWidth { FillAvailable, FitIntrinsic };
+
+constexpr EdgeSizes kButtonPadding{
+    .top = defaults::kButtonVerticalPadding,
+    .right = defaults::kButtonHorizontalPadding,
+    .bottom = defaults::kButtonVerticalPadding,
+    .left = defaults::kButtonHorizontalPadding,
+};
 
 // Layout operates on the typed node tree produced by analysis. These helpers
 // read its computed property values without exposing property lookup details to
@@ -44,38 +53,38 @@ length_property(const node::Node &source,
   return std::max(0.0, length->pixels);
 }
 
-[[nodiscard]] const std::string *
-string_property(const node::Node &source,
-                const node::PropertyId property_id) noexcept {
-  const node::Property *property = find_property(source, property_id);
-  return property == nullptr ? nullptr
-                             : std::get_if<std::string>(&property->value);
-}
-
 [[nodiscard]] EdgeSizes
 edges(const node::Node &source, const node::PropertyId shorthand,
       const node::PropertyId top, const node::PropertyId right,
-      const node::PropertyId bottom, const node::PropertyId left) noexcept {
-  const double all = length_property(source, shorthand).value_or(0.0);
+      const node::PropertyId bottom, const node::PropertyId left,
+      const EdgeSizes defaults = {}) noexcept {
+  const std::optional<double> shorthand_value =
+      length_property(source, shorthand);
+  const EdgeSizes base = shorthand_value.has_value()
+                             ? EdgeSizes{.top = *shorthand_value,
+                                         .right = *shorthand_value,
+                                         .bottom = *shorthand_value,
+                                         .left = *shorthand_value}
+                             : defaults;
+  // side specific overide everything
   return {
-      .top = length_property(source, top).value_or(all),
-      .right = length_property(source, right).value_or(all),
-      .bottom = length_property(source, bottom).value_or(all),
-      .left = length_property(source, left).value_or(all),
+      .top = length_property(source, top).value_or(base.top),
+      .right = length_property(source, right).value_or(base.right),
+      .bottom = length_property(source, bottom).value_or(base.bottom),
+      .left = length_property(source, left).value_or(base.left),
   };
 }
 
 [[nodiscard]] double font_size(const node::Node &owner) noexcept {
-  const double default_size =
-      owner.kind == node::NodeKind::Heading ? 28.0 : 16.0;
+  const double default_size = defaults::text_style(owner.kind).font_size;
   return std::max(
-      1.0,
+      defaults::kMinimumFontSize,
       length_property(owner, node::PropertyId::Size).value_or(default_size));
 }
 
 [[nodiscard]] TextStyle text_style(const node::Node &owner) noexcept {
-  return {.font_size = font_size(owner),
-          .bold = owner.kind == node::NodeKind::Heading};
+  const TextStyle default_style = defaults::text_style(owner.kind);
+  return {.font_size = font_size(owner), .bold = default_style.bold};
 }
 
 [[nodiscard]] double text_height(const node::Node &owner,
@@ -89,13 +98,21 @@ edges(const node::Node &source, const node::PropertyId shorthand,
   return detail::unwrapped_width(text, text_style(owner), metrics);
 }
 
-[[nodiscard]] double direct_text_width(const node::Node &source,
-                                       const TextMetrics &metrics) {
+[[nodiscard]] double intrinsic_text_width(const node::Node &source,
+                                          const TextMetrics &metrics) {
   double width = 0.0;
   for (const node::Item &item : source.items) {
     if (const auto *text = std::get_if<node::TextChild>(&item);
         text != nullptr) {
       width = std::max(width, text_width(source, text->value, metrics));
+      continue;
+    }
+    if (const auto *property = std::get_if<node::Property>(&item);
+        property != nullptr && property->id == node::PropertyId::Content) {
+      if (const auto *content = std::get_if<std::string>(&property->value);
+          content != nullptr) {
+        width = std::max(width, text_width(source, *content, metrics));
+      }
     }
   }
   return width;
@@ -109,14 +126,8 @@ intrinsic_width(const node::Node &source, const bool parent_is_row,
   switch (source.kind) {
   case node::NodeKind::Text:
   case node::NodeKind::Heading:
-    if (const std::string *content =
-            string_property(source, node::PropertyId::Content);
-        content != nullptr) {
-      return text_width(source, *content, metrics);
-    }
-    return direct_text_width(source, metrics);
   case node::NodeKind::Button:
-    return direct_text_width(source, metrics);
+    return intrinsic_text_width(source, metrics);
   case node::NodeKind::Spacer:
     if (parent_is_row) {
       return length_property(source, node::PropertyId::Size).value_or(0.0);
@@ -137,9 +148,8 @@ intrinsic_width(const node::Node &source, const bool parent_is_row,
   switch (source.kind) {
   case node::NodeKind::Text:
   case node::NodeKind::Heading:
-    return text_height(source, metrics);
   case node::NodeKind::Button:
-    return 36.0;
+    return text_height(source, metrics);
   case node::NodeKind::Spacer:
     return parent_is_row
                ? 0.0
@@ -449,10 +459,11 @@ layout_node(const node::Node &source, const Rect &containing_block,
       edges(source, node::PropertyId::Margin, node::PropertyId::MarginTop,
             node::PropertyId::MarginRight, node::PropertyId::MarginBottom,
             node::PropertyId::MarginLeft);
-  result->dimensions.padding =
-      edges(source, node::PropertyId::Padding, node::PropertyId::PaddingTop,
-            node::PropertyId::PaddingRight, node::PropertyId::PaddingBottom,
-            node::PropertyId::PaddingLeft);
+  result->dimensions.padding = edges(
+      source, node::PropertyId::Padding, node::PropertyId::PaddingTop,
+      node::PropertyId::PaddingRight, node::PropertyId::PaddingBottom,
+      node::PropertyId::PaddingLeft,
+      source.kind == node::NodeKind::Button ? kButtonPadding : EdgeSizes{});
 
   const double border =
       length_property(source, node::PropertyId::BorderWidth).value_or(0.0);

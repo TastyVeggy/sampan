@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "sampan/analyze/analyzer.hpp"
+#include "sampan/layout/defaults.hpp"
 #include "sampan/layout/layout.hpp"
 #include "sampan/parse/parser.hpp"
 
@@ -70,12 +71,12 @@ length_property(const node::Node &source,
 }
 
 [[nodiscard]] layout::TextStyle text_style(const node::Node &owner) {
-  const double default_size =
-      owner.kind == node::NodeKind::Heading ? 28.0 : 16.0;
-  return {.font_size =
-              std::max(1.0, length_property(owner, node::PropertyId::Size)
-                                .value_or(default_size)),
-          .bold = owner.kind == node::NodeKind::Heading};
+  const layout::TextStyle default_style =
+      layout::defaults::text_style(owner.kind);
+  return {.font_size = std::max(layout::defaults::kMinimumFontSize,
+                                length_property(owner, node::PropertyId::Size)
+                                    .value_or(default_style.font_size)),
+          .bold = default_style.bold};
 }
 
 [[nodiscard]] QFont font_for_style(QFont font, const layout::TextStyle &style) {

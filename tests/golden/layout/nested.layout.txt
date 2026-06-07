@@ -29,21 +29,21 @@ Layout
           Text "First card" x=25 y=74.6 width=88 height=19.2
             Line "First card" x=25 y=74.6 width=88 height=19.2
         Box stack
-          content x=278 y=93 width=320 height=83.2
+          content x=278 y=101.4 width=320 height=66.4
           padding top=0 right=0 bottom=0 left=0
           border top=0 right=0 bottom=0 left=0
           margin top=0 right=0 bottom=0 left=0
           Box text
-            content x=278 y=93 width=96.8 height=19.2
+            content x=278 y=101.4 width=96.8 height=19.2
             padding top=0 right=0 bottom=0 left=0
             border top=0 right=0 bottom=0 left=0
             margin top=0 right=0 bottom=0 left=0
-            Text "Nested text" x=278 y=93 width=96.8 height=19.2
-              Line "Nested text" x=278 y=93 width=96.8 height=19.2
+            Text "Nested text" x=278 y=101.4 width=96.8 height=19.2
+              Line "Nested text" x=278 y=101.4 width=96.8 height=19.2
           Box button
-            content x=288 y=130.2 width=105.6 height=36
+            content x=288 y=138.6 width=105.6 height=19.2
             padding top=10 right=10 bottom=10 left=10
             border top=0 right=0 bottom=0 left=0
             margin top=0 right=0 bottom=0 left=0
-            Text "Open details" x=288 y=130.2 width=105.6 height=19.2
-              Line "Open details" x=288 y=130.2 width=105.6 height=19.2
+            Text "Open details" x=288 y=138.6 width=105.6 height=19.2
+              Line "Open details" x=288 y=138.6 width=105.6 height=19.2
