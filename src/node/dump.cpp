@@ -58,6 +58,9 @@ void write_value(std::ostringstream &output, const Value &value) {
           },
           [&output](const Alignment resolved) {
             write_quoted(output, std::string{to_string(resolved)});
+          },
+          [&output](const Justification resolved) {
+            write_quoted(output, std::string{to_string(resolved)});
           }},
       value);
 }
@@ -150,6 +153,8 @@ std::string_view to_string(const PropertyId property) noexcept {
     return "gap";
   case PropertyId::Align:
     return "align";
+  case PropertyId::Justify:
+    return "justify";
   case PropertyId::Content:
     return "content";
   case PropertyId::Color:
@@ -173,6 +178,18 @@ std::string_view to_string(const Alignment alignment) noexcept {
   case Alignment::Center:
     return "center";
   case Alignment::End:
+    return "end";
+  }
+  return "unknown";
+}
+
+std::string_view to_string(const Justification justification) noexcept {
+  switch (justification) {
+  case Justification::Start:
+    return "start";
+  case Justification::Center:
+    return "center";
+  case Justification::End:
     return "end";
   }
   return "unknown";

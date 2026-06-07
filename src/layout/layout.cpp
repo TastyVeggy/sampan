@@ -75,7 +75,8 @@ edges(const node::Node &source, const node::PropertyId shorthand,
 
 [[nodiscard]] double text_width(const node::Node &owner,
                                 const std::string_view text) noexcept {
-  // Tihs is just estimate. The real measurement will come from rendering backend
+  // Tihs is just estimate. The real measurement will come from rendering
+  // backend
   return static_cast<double>(text.size()) * font_size(owner) * 0.55;
 }
 
@@ -91,7 +92,7 @@ edges(const node::Node &source, const node::PropertyId shorthand,
 }
 
 [[nodiscard]] std::optional<double>
-intrinsic_width(const node::Node &source) noexcept {
+intrinsic_width(const node::Node &source, const bool parent_is_row) noexcept {
   // A missing intrinsic width means that an automatic-width node behaves like
   // a container and consumes the width offered by its parent.
   switch (source.kind) {
@@ -106,7 +107,10 @@ intrinsic_width(const node::Node &source) noexcept {
   case node::NodeKind::Button:
     return direct_text_width(source);
   case node::NodeKind::Spacer:
-    return length_property(source, node::PropertyId::Size).value_or(0.0);
+    if (parent_is_row) {
+      return length_property(source, node::PropertyId::Size).value_or(0.0);
+    }
+    return std::nullopt;
   case node::NodeKind::Page:
   case node::NodeKind::Stack:
   case node::NodeKind::Row:
@@ -147,6 +151,17 @@ intrinsic_width(const node::Node &source) noexcept {
   return value == nullptr ? node::Alignment::Start : *value;
 }
 
+[[nodiscard]] node::Justification
+justification(const node::Node &source) noexcept {
+  const node::Property *property =
+      find_property(source, node::PropertyId::Justify);
+  if (property == nullptr) {
+    return node::Justification::Start;
+  }
+  const auto *value = std::get_if<node::Justification>(&property->value);
+  return value == nullptr ? node::Justification::Start : *value;
+}
+
 [[nodiscard]] double outer_width(const LayoutBox &box) noexcept {
   const Dimensions &dimensions = box.dimensions;
   return dimensions.margin.left + dimensions.border.left +
@@ -177,6 +192,33 @@ intrinsic_width(const node::Node &source) noexcept {
   return outer_height(*std::get<std::unique_ptr<LayoutBox>>(item));
 }
 
+[[nodiscard]] double alignment_offset(const double free_space,
+                                      const node::Alignment align) noexcept {
+  switch (align) {
+  case node::Alignment::Start:
+    return 0.0;
+  case node::Alignment::Center:
+    return free_space / 2.0;
+  case node::Alignment::End:
+    return free_space;
+  }
+  return 0.0;
+}
+
+[[nodiscard]] double
+justification_offset(const double free_space,
+                     const node::Justification justify) noexcept {
+  switch (justify) {
+  case node::Justification::Start:
+    return 0.0;
+  case node::Justification::Center:
+    return free_space / 2.0;
+  case node::Justification::End:
+    return free_space;
+  }
+  return 0.0;
+}
+
 void translate_item(LayoutItem &item, double x, double y);
 
 void translate_box(LayoutBox &box, const double x, const double y) {
@@ -197,6 +239,16 @@ void translate_item(LayoutItem &item, const double x, const double y) {
   translate_box(*std::get<std::unique_ptr<LayoutBox>>(item), x, y);
 }
 
+void justify_items(std::vector<LayoutItem> &items, const std::size_t begin,
+                   const std::size_t end, const double free_space,
+                   const node::Justification justify, const bool horizontal) {
+  const double offset = justification_offset(free_space, justify);
+  for (std::size_t index = begin; index < end; ++index) {
+    translate_item(items[index], horizontal ? offset : 0.0,
+                   horizontal ? 0.0 : offset);
+  }
+}
+
 [[nodiscard]] std::unique_ptr<LayoutBox>
 layout_node(const node::Node &source, const Rect &containing_block,
             bool fills_viewport_height, AutoWidth auto_width,
@@ -206,7 +258,7 @@ layout_node(const node::Node &source, const Rect &containing_block,
 layout_flow_item(const node::Item &item, const node::Node &owner,
                  const Rect &containing_block, const AutoWidth auto_width,
                  const bool parent_is_row) {
-  
+
   // Properties do not participate in flow. Only direct text and child nodes
   // produce layout items, in the same order in which they appear in the node
   if (const auto *text = std::get_if<node::TextChild>(&item); text != nullptr) {
@@ -235,7 +287,8 @@ layout_flow_item(const node::Item &item, const node::Node &owner,
 [[nodiscard]] double layout_vertical_flow(LayoutBox &result,
                                           const Rect &content,
                                           const double containing_height,
-                                          const double gap) {
+                                          const double gap,
+                                          const node::Alignment align) {
   // next_item_y is the bottom edge of the last laid-out item. The gap is added
   // before each subsequent flow item but not before the first one.
   double next_item_y = content.y;
@@ -254,11 +307,13 @@ layout_flow_item(const node::Item &item, const node::Node &owner,
                           .y = next_item_y,
                           .width = content.width,
                           .height = containing_height},
-                         AutoWidth::FillAvailable, false);
+                         AutoWidth::FitIntrinsic, false);
     if (!item.has_value()) {
       continue;
     }
 
+    const double free_width = std::max(0.0, content.width - item_width(*item));
+    translate_item(*item, alignment_offset(free_width, align), 0.0);
     next_item_y += item_height(*item);
     result.items.push_back(std::move(*item));
     has_item = true;
@@ -268,37 +323,38 @@ layout_flow_item(const node::Item &item, const node::Node &owner,
 
 void align_line(std::vector<LayoutItem> &items, const std::size_t begin,
                 const double line_height, const node::Alignment align) {
-  // Row alignment is cross-axis (vertical) alignment. Each item is positioned
+  // Only do row cross-axis ailgnment. Each item is positioned
   // relative to the tallest item on this particular row line.
   for (std::size_t index = begin; index < items.size(); ++index) {
     const double free_space = line_height - item_height(items[index]);
-    double offset = 0.0;
-    switch (align) {
-    case node::Alignment::Start:
-      break;
-    case node::Alignment::Center:
-      offset = free_space / 2.0;
-      break;
-    case node::Alignment::End:
-      offset = free_space;
-      break;
-    }
-    translate_item(items[index], 0.0, offset);
+    translate_item(items[index], 0.0, alignment_offset(free_space, align));
   }
+}
+
+void finish_row_line(LayoutBox &result, const Rect &content,
+                     const std::size_t line_begin, const double line_height,
+                     const double line_right, const node::Alignment align,
+                     const node::Justification justify) {
+  align_line(result.items, line_begin, line_height, align);
+  const double free_width =
+      std::max(0.0, content.x + content.width - line_right);
+  justify_items(result.items, line_begin, result.items.size(), free_width,
+                justify, true);
 }
 
 [[nodiscard]] double layout_row_flow(LayoutBox &result, const Rect &content,
                                      const double containing_height,
-                                     const double gap) {
+                                     const double gap,
+                                     const node::Alignment align,
+                                     const node::Justification justify) {
   const double content_right = content.x + content.width;
 
-  double line_y = content.y;  // line_y is the top of the current line
+  double line_y = content.y;      // line_y is the top of the current line
   double next_item_x = content.x; // right edge of its most recently placed item
   double line_height = 0.0;
-  std::size_t line_begin = 0; // identify the items that must be cross-axis aligned together when line complete
-  bool has_line_item = false; 
-  bool has_any_item = false;
-  const node::Alignment align = alignment(*result.node);
+  std::size_t line_begin = 0; // identify the items that must be cross-axis
+                              // aligned together when line complete
+  bool has_line_item = false;
 
   for (const node::Item &source_item : result.node->items) {
     // first lay out the item at its prosective position so we can get the
@@ -320,17 +376,17 @@ void align_line(std::vector<LayoutItem> &items, const std::size_t begin,
     if (has_line_item && candidate_x + width > content_right) {
       // finish and align the current line, the move the newly-built item to
       // the next line
-      align_line(result.items, line_begin, line_height, align);
+      finish_row_line(result, content, line_begin, line_height, next_item_x,
+                      align, justify);
       line_y += line_height + gap;
       next_item_x = content.x;
       line_height = 0.0;
       line_begin = result.items.size();
       has_line_item = false;
 
-      translate_item(
-        *item,
-        content.x - candidate_x, // move to start of line
-        line_y - candidate_y // move to next line
+      translate_item(*item,
+                     content.x - candidate_x, // move to start of line
+                     line_y - candidate_y     // move to next line
       );
     }
 
@@ -339,14 +395,14 @@ void align_line(std::vector<LayoutItem> &items, const std::size_t begin,
     line_height = std::max(line_height, item_height(*item));
     result.items.push_back(std::move(*item));
     has_line_item = true;
-    has_any_item = true;
   }
 
-  if (!has_any_item) {
+  if (result.items.empty()) {
     return 0.0;
   }
 
-  align_line(result.items, line_begin, line_height, align);
+  finish_row_line(result, content, line_begin, line_height, next_item_x, align,
+                  justify);
   return line_y - content.y + line_height;
 }
 
@@ -385,7 +441,8 @@ std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
   double automatic_width = available_width;
   if (auto_width == AutoWidth::FitIntrinsic) {
     automatic_width = std::min(
-        available_width, intrinsic_width(source).value_or(available_width));
+        available_width,
+        intrinsic_width(source, parent_is_row).value_or(available_width));
   }
   const double content_width = length_property(source, node::PropertyId::Width)
                                    .value_or(automatic_width);
@@ -399,12 +456,14 @@ std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
 
   const double gap =
       length_property(source, node::PropertyId::Gap).value_or(0.0);
+  const node::Alignment align = alignment(source);
+  const node::Justification justify = justification(source);
   const double flow_height =
       source.kind == node::NodeKind::Row
           ? layout_row_flow(*result, result->dimensions.content,
-                            containing_block.height, gap)
+                            containing_block.height, gap, align, justify)
           : layout_vertical_flow(*result, result->dimensions.content,
-                                 containing_block.height, gap);
+                                 containing_block.height, gap, align);
 
   double automatic_height = intrinsic_height(source, parent_is_row);
   automatic_height = std::max(automatic_height, flow_height);
@@ -418,6 +477,12 @@ std::unique_ptr<LayoutBox> layout_node(const node::Node &source,
   result->dimensions.content.height =
       length_property(source, node::PropertyId::Height)
           .value_or(std::max(0.0, automatic_height));
+  if (source.kind != node::NodeKind::Row) {
+    const double free_height =
+        std::max(0.0, result->dimensions.content.height - flow_height);
+    justify_items(result->items, 0, result->items.size(), free_height, justify,
+                  false);
+  }
   return result;
 }
 

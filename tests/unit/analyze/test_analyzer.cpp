@@ -69,12 +69,12 @@ TEST(Analyzer, SupportsEveryNodeAndProperty) {
       " margin-bottom: 11px margin-left: 12px"
       " border-width: 13px border-color: #123 background: #abcdef"
       " title: \"All properties\""
-      " stack { gap: 1px }"
-      " row { gap: 2px align: \"center\" }"
-      " box { }"
+      " stack { gap: 1px align: \"start\" justify: \"end\" }"
+      " row { gap: 2px align: \"center\" justify: \"center\" }"
+      " box { align: \"end\" justify: \"end\" }"
       " text { content: \"Text\" color: #111 size: 14px weight: 400 }"
       " heading { content: \"Heading\" color: #222 size: 20px level: 2 }"
-      " button { }"
+      " button { align: \"center\" justify: \"center\" }"
       " spacer { size: 5px }"
       " }");
 
@@ -105,9 +105,21 @@ TEST(Analyzer, RejectsInvalidRowAlignment) {
   EXPECT_EQ(result.tree, nullptr);
 }
 
+TEST(Analyzer, RejectsInvalidJustification) {
+  const sampan::analyze::AnalyzeResult result =
+      analyze_source("page { stack { justify: \"apart\" } }");
+
+  ASSERT_EQ(result.diagnostics.size(), 1);
+  EXPECT_EQ(
+      result.diagnostics.front().message,
+      "property 'justify' on node 'stack' expects one of 'start', 'center', "
+      "or 'end'");
+  EXPECT_EQ(result.tree, nullptr);
+}
+
 TEST(Analyzer, ResolvesRowAlignmentToTypedValue) {
   const sampan::analyze::AnalyzeResult result =
-      analyze_source("page { row { align: \"end\" } }");
+      analyze_source("page { row { align: \"end\" justify: \"center\" } }");
 
   ASSERT_TRUE(result.diagnostics.empty());
   ASSERT_NE(result.tree, nullptr);
@@ -118,6 +130,32 @@ TEST(Analyzer, ResolvesRowAlignmentToTypedValue) {
       std::get<sampan::node::Property>(row.value->items.front());
   EXPECT_EQ(std::get<sampan::node::Alignment>(alignment.value),
             sampan::node::Alignment::End);
+  const auto &justification =
+      std::get<sampan::node::Property>(row.value->items.at(1));
+  EXPECT_EQ(std::get<sampan::node::Justification>(justification.value),
+            sampan::node::Justification::Center);
+}
+
+TEST(Analyzer, AllowsFlowAlignmentOnlyOnFlowOwners) {
+  const sampan::analyze::AnalyzeResult valid =
+      analyze_source("page { align: \"start\" justify: \"start\" "
+                     "box { align: \"center\" justify: \"center\" } "
+                     "button { align: \"end\" justify: \"end\" } }");
+  EXPECT_TRUE(valid.diagnostics.empty());
+  EXPECT_NE(valid.tree, nullptr);
+
+  constexpr std::array<std::string_view, 3> unsupported_nodes{"text", "heading",
+                                                              "spacer"};
+  for (const std::string_view node : unsupported_nodes) {
+    const sampan::analyze::AnalyzeResult invalid = analyze_source(
+        "page { " + std::string{node} + " { align: \"center\" } }");
+    ASSERT_EQ(invalid.diagnostics.size(), 1) << node;
+    EXPECT_EQ(invalid.diagnostics.front().message,
+              "property 'align' is not valid on node '" + std::string{node} +
+                  "'")
+        << node;
+    EXPECT_EQ(invalid.tree, nullptr) << node;
+  }
 }
 
 TEST(Analyzer, EnforcesPageRootPlacement) {

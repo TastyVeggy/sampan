@@ -30,7 +30,7 @@ constexpr std::array<NamedNode, 8> kNodes{{
 }};
 
 using enum node::PropertyId;
-constexpr std::array<NamedProperty, 23> kProperties{{
+constexpr std::array<NamedProperty, 24> kProperties{{
     {"width", {Width, ValueType::Length}},
     {"height", {Height, ValueType::Length}},
     {"padding", {Padding, ValueType::Length}},
@@ -49,6 +49,7 @@ constexpr std::array<NamedProperty, 23> kProperties{{
     {"title", {Title, ValueType::String}},
     {"gap", {Gap, ValueType::Length}},
     {"align", {Align, ValueType::String, normalize_alignment}},
+    {"justify", {Justify, ValueType::String, normalize_justification}},
     {"content", {Content, ValueType::String}},
     {"color", {Color, ValueType::Color}},
     {"size", {Size, ValueType::Length}},

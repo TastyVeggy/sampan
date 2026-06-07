@@ -1,0 +1,30 @@
+page {
+  stack {
+    width: 300px
+    height: 240px
+    padding: 10px
+    gap: 10px
+    align: "center"
+    justify: "end"
+
+    button {
+      width: 120px
+      height: 40px
+      align: "center"
+      justify: "center"
+      "Centered"
+    }
+
+    row {
+      width: 240px
+      gap: 10px
+      align: "center"
+      justify: "center"
+
+      box { width: 40px height: 10px }
+      box { width: 40px height: 30px }
+    }
+
+    box { width: 80px height: 20px }
+  }
+}

@@ -19,6 +19,12 @@ constexpr std::array<NamedValue<node::Alignment>, 3> kAlignments{{
     {"end", node::Alignment::End},
 }};
 
+constexpr std::array<NamedValue<node::Justification>, 3> kJustifications{{
+    {"start", node::Justification::Start},
+    {"center", node::Justification::Center},
+    {"end", node::Justification::End},
+}};
+
 template <typename T, std::size_t Size>
 [[nodiscard]] std::string
 expected_values_message(const std::array<NamedValue<T>, Size> &values) {
@@ -52,6 +58,11 @@ normalize_named_value(node::Value value,
 
 std::expected<node::Value, std::string> normalize_alignment(node::Value value) {
   return normalize_named_value(std::move(value), kAlignments);
+}
+
+std::expected<node::Value, std::string>
+normalize_justification(node::Value value) {
+  return normalize_named_value(std::move(value), kJustifications);
 }
 
 } // namespace sampan::analyze::detail

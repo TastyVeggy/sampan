@@ -24,6 +24,7 @@ namespace {
   case node::PropertyId::Title:
   case node::PropertyId::Gap:
   case node::PropertyId::Align:
+  case node::PropertyId::Justify:
   case node::PropertyId::Content:
   case node::PropertyId::Color:
   case node::PropertyId::Size:
@@ -45,12 +46,17 @@ bool property_allowed(const node::NodeKind node_kind,
 
   switch (node_kind) {
   case node::NodeKind::Page:
-    return property == node::PropertyId::Title;
+    return property == node::PropertyId::Title ||
+           property == node::PropertyId::Align ||
+           property == node::PropertyId::Justify;
   case node::NodeKind::Stack:
-    return property == node::PropertyId::Gap;
+    return property == node::PropertyId::Gap ||
+           property == node::PropertyId::Align ||
+           property == node::PropertyId::Justify;
   case node::NodeKind::Row:
     return property == node::PropertyId::Gap ||
-           property == node::PropertyId::Align;
+           property == node::PropertyId::Align ||
+           property == node::PropertyId::Justify;
   case node::NodeKind::Text:
     return property == node::PropertyId::Content ||
            property == node::PropertyId::Color ||
@@ -65,7 +71,8 @@ bool property_allowed(const node::NodeKind node_kind,
     return property == node::PropertyId::Size;
   case node::NodeKind::Box:
   case node::NodeKind::Button:
-    return false;
+    return property == node::PropertyId::Align ||
+           property == node::PropertyId::Justify;
   }
   return false;
 }

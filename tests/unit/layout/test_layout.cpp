@@ -285,8 +285,132 @@ TEST(Layout, UsesIntrinsicWidthsForRowLeavesAndText) {
   EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.width, 17.6);
 }
 
+TEST(Layout, AlignsStackItemsOnTheHorizontalCrossAxis) {
+  constexpr std::array<std::pair<std::string_view, double>, 3> expectations{
+      {{"start", 0.0}, {"center", 40.0}, {"end", 80.0}}};
+
+  for (const auto &[value, expected_x] : expectations) {
+    const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+        "page { stack { width: 100px align: \"" + std::string{value} +
+        "\" box { width: 20px height: 10px } } }");
+    ASSERT_NE(tree, nullptr) << value;
+
+    const std::unique_ptr<sampan::layout::LayoutBox> root =
+        sampan::layout::build(
+            *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+    ASSERT_NE(root, nullptr) << value;
+    const sampan::layout::LayoutBox &stack = box_at(*root, 0);
+
+    EXPECT_DOUBLE_EQ(box_at(stack, 0).dimensions.content.x, expected_x)
+        << value;
+  }
+}
+
+TEST(Layout, SupportsEveryStackJustification) {
+  struct Expectation {
+    std::string_view value;
+    double first_y;
+    double second_y;
+  };
+
+  constexpr std::array<Expectation, 3> expectations{{
+      {"start", 0.0, 10.0},
+      {"center", 40.0, 50.0},
+      {"end", 80.0, 90.0},
+  }};
+
+  for (const Expectation &expected : expectations) {
+    const std::unique_ptr<sampan::node::Tree> tree =
+        analyze_source("page { stack { width: 100px height: 100px justify: \"" +
+                       std::string{expected.value} +
+                       "\" box { width: 10px height: 10px } "
+                       "box { width: 10px height: 10px } } }");
+    ASSERT_NE(tree, nullptr) << expected.value;
+
+    const std::unique_ptr<sampan::layout::LayoutBox> root =
+        sampan::layout::build(
+            *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+    ASSERT_NE(root, nullptr) << expected.value;
+    const sampan::layout::LayoutBox &stack = box_at(*root, 0);
+
+    EXPECT_NEAR(box_at(stack, 0).dimensions.content.y, expected.first_y, 1e-9)
+        << expected.value;
+    EXPECT_NEAR(box_at(stack, 1).dimensions.content.y, expected.second_y, 1e-9)
+        << expected.value;
+  }
+}
+
+TEST(Layout, SupportsEveryRowJustification) {
+  struct Expectation {
+    std::string_view value;
+    double first_x;
+    double second_x;
+  };
+
+  constexpr std::array<Expectation, 3> expectations{{
+      {"start", 0.0, 10.0},
+      {"center", 40.0, 50.0},
+      {"end", 80.0, 90.0},
+  }};
+
+  for (const Expectation &expected : expectations) {
+    const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+        "page { row { width: 100px justify: \"" + std::string{expected.value} +
+        "\" box { width: 10px height: 10px } "
+        "box { width: 10px height: 10px } } }");
+    ASSERT_NE(tree, nullptr) << expected.value;
+
+    const std::unique_ptr<sampan::layout::LayoutBox> root =
+        sampan::layout::build(
+            *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+    ASSERT_NE(root, nullptr) << expected.value;
+    const sampan::layout::LayoutBox &row = box_at(*root, 0);
+
+    EXPECT_NEAR(box_at(row, 0).dimensions.content.x, expected.first_x, 1e-9)
+        << expected.value;
+    EXPECT_NEAR(box_at(row, 1).dimensions.content.x, expected.second_x, 1e-9)
+        << expected.value;
+  }
+}
+
+TEST(Layout, JustifiesEveryWrappedRowLineIndependently) {
+  const std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { row { width: 100px justify: \"end\" "
+                     "box { width: 40px height: 10px } "
+                     "box { width: 40px height: 10px } "
+                     "box { width: 40px height: 10px } } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &row = box_at(*root, 0);
+
+  EXPECT_DOUBLE_EQ(box_at(row, 0).dimensions.content.x, 20.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 1).dimensions.content.x, 60.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.x, 60.0);
+  EXPECT_DOUBLE_EQ(box_at(row, 2).dimensions.content.y, 10.0);
+}
+
+TEST(Layout, AlignsAndJustifiesButtonText) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { button { width: 100px height: 40px align: \"center\" "
+      "justify: \"center\" \"OK\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 500.0, .height = 300.0});
+  ASSERT_NE(root, nullptr);
+  const sampan::layout::LayoutBox &button = box_at(*root, 0);
+  const sampan::layout::LayoutText &label = text_at(button, 0);
+
+  EXPECT_DOUBLE_EQ(label.dimensions.width, 17.6);
+  EXPECT_NEAR(label.dimensions.x, 41.2, 1e-9);
+  EXPECT_NEAR(label.dimensions.y, 10.4, 1e-9);
+}
+
 TEST(Layout, MatchesLayoutGoldens) {
-  constexpr std::array<std::string_view, 8> fixtures{
+  constexpr std::array<std::string_view, 9> fixtures{
       "sample",
       "nested",
       "row_wrapping",
@@ -295,6 +419,7 @@ TEST(Layout, MatchesLayoutGoldens) {
       "row_wrapped_alignment",
       "asymmetric_edges",
       "empty_and_spacers",
+      "flow_alignment",
   };
 
   for (const std::string_view fixture : fixtures) {

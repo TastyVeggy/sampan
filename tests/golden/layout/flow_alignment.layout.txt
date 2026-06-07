@@ -1,0 +1,37 @@
+Layout
+  Box page
+    content x=0 y=0 width=1024 height=768
+    padding top=0 right=0 bottom=0 left=0
+    border top=0 right=0 bottom=0 left=0
+    margin top=0 right=0 bottom=0 left=0
+    Box stack
+      content x=10 y=10 width=300 height=240
+      padding top=10 right=10 bottom=10 left=10
+      border top=0 right=0 bottom=0 left=0
+      margin top=0 right=0 bottom=0 left=0
+      Box button
+        content x=100 y=140 width=120 height=40
+        padding top=0 right=0 bottom=0 left=0
+        border top=0 right=0 bottom=0 left=0
+        margin top=0 right=0 bottom=0 left=0
+        Text "Centered" x=124.8 y=150.4 width=70.4 height=19.2
+      Box row
+        content x=40 y=190 width=240 height=30
+        padding top=0 right=0 bottom=0 left=0
+        border top=0 right=0 bottom=0 left=0
+        margin top=0 right=0 bottom=0 left=0
+        Box box
+          content x=115 y=200 width=40 height=10
+          padding top=0 right=0 bottom=0 left=0
+          border top=0 right=0 bottom=0 left=0
+          margin top=0 right=0 bottom=0 left=0
+        Box box
+          content x=165 y=190 width=40 height=30
+          padding top=0 right=0 bottom=0 left=0
+          border top=0 right=0 bottom=0 left=0
+          margin top=0 right=0 bottom=0 left=0
+      Box box
+        content x=120 y=230 width=80 height=20
+        padding top=0 right=0 bottom=0 left=0
+        border top=0 right=0 bottom=0 left=0
+        margin top=0 right=0 bottom=0 left=0

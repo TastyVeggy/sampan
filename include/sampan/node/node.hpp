@@ -24,6 +24,8 @@ enum class NodeKind {
 
 enum class Alignment { Start, Center, End };
 
+enum class Justification { Start, Center, End };
+
 enum class PropertyId {
   Width,
   Height,
@@ -43,6 +45,7 @@ enum class PropertyId {
   Title,
   Gap,
   Align,
+  Justify,
   Content,
   Color,
   Size,
@@ -63,7 +66,7 @@ struct Color {
 };
 
 using Value = std::variant<std::int64_t, double, Length, Color, std::string,
-                           bool, Alignment>;
+                           bool, Alignment, Justification>;
 
 struct Property {
   PropertyId id;
@@ -97,5 +100,6 @@ struct Tree {
 [[nodiscard]] std::string_view to_string(NodeKind kind) noexcept;
 [[nodiscard]] std::string_view to_string(PropertyId property) noexcept;
 [[nodiscard]] std::string_view to_string(Alignment alignment) noexcept;
+[[nodiscard]] std::string_view to_string(Justification justification) noexcept;
 
 } // namespace sampan::node

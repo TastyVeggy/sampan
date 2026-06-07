@@ -10,7 +10,7 @@ Layout
       border top=0 right=0 bottom=0 left=0
       margin top=0 right=0 bottom=0 left=0
       Box heading
-        content x=24 y=24 width=1352 height=33.6
+        content x=24 y=24 width=261.8 height=33.6
         padding top=0 right=0 bottom=0 left=0
         border top=0 right=0 bottom=0 left=0
         margin top=0 right=0 bottom=0 left=0
@@ -24,7 +24,7 @@ Layout
           padding top=0 right=0 bottom=0 left=0
           border top=1 right=1 bottom=1 left=1
           margin top=0 right=0 bottom=0 left=0
-          Text "First card" x=25 y=74.6 width=500 height=19.2
+          Text "First card" x=25 y=74.6 width=88 height=19.2
         Box spacer
           content x=538 y=73.6 width=20 height=0
           padding top=0 right=0 bottom=0 left=0
@@ -35,22 +35,22 @@ Layout
           padding top=0 right=0 bottom=0 left=0
           border top=1 right=1 bottom=1 left=1
           margin top=0 right=0 bottom=0 left=0
-          Text "Second card" x=571 y=74.6 width=500 height=19.2
+          Text "Second card" x=571 y=74.6 width=96.8 height=19.2
         Box box
           content x=25 y=328.6 width=500 height=120
           padding top=0 right=0 bottom=0 left=0
           border top=1 right=1 bottom=1 left=1
           margin top=0 right=0 bottom=0 left=0
-          Text "Third card" x=25 y=328.6 width=500 height=19.2
+          Text "Third card" x=25 y=328.6 width=88 height=19.2
         Box box
           content x=25 y=462.6 width=1000 height=200
           padding top=0 right=0 bottom=0 left=0
           border top=1 right=1 bottom=1 left=1
           margin top=0 right=0 bottom=0 left=0
-          Text "Fourth card" x=25 y=462.6 width=1000 height=19.2
+          Text "Fourth card" x=25 y=462.6 width=96.8 height=19.2
         Box box
           content x=1039 y=462.6 width=300 height=200
           padding top=0 right=0 bottom=0 left=0
           border top=1 right=1 bottom=1 left=1
           margin top=0 right=0 bottom=0 left=0
-          Text "Fifth card" x=1039 y=462.6 width=300 height=19.2
+          Text "Fifth card" x=1039 y=462.6 width=88 height=19.2
