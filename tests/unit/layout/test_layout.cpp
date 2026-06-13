@@ -76,6 +76,41 @@ TEST(Layout, PageFillsViewport) {
   EXPECT_DOUBLE_EQ(root->dimensions.content.y, 0.0);
   EXPECT_DOUBLE_EQ(root->dimensions.content.width, 800.0);
   EXPECT_DOUBLE_EQ(root->dimensions.content.height, 600.0);
+  const sampan::layout::Extent extent = sampan::layout::document_extent(*root);
+  EXPECT_DOUBLE_EQ(extent.width, 800.0);
+  EXPECT_DOUBLE_EQ(extent.height, 600.0);
+}
+
+TEST(Layout, MeasuresExplicitPageAndDescendantOverflow) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { width: 100px height: 80px box { width: 250px height: 150px "
+      "margin: 10px border-width: 2px } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 200.0, .height = 160.0});
+  ASSERT_NE(root, nullptr);
+  EXPECT_DOUBLE_EQ(root->dimensions.content.width, 100.0);
+  EXPECT_DOUBLE_EQ(root->dimensions.content.height, 80.0);
+
+  const sampan::layout::Extent extent = sampan::layout::document_extent(*root);
+  EXPECT_DOUBLE_EQ(extent.width, 274.0);
+  EXPECT_DOUBLE_EQ(extent.height, 174.0);
+}
+
+TEST(Layout, IncludesTextOverflowInDocumentExtent) {
+  const std::unique_ptr<sampan::node::Tree> tree = analyze_source(
+      "page { width: 100px height: 10px "
+      "text { width: 44px height: 10px content: \"hello world\" } }");
+  ASSERT_NE(tree, nullptr);
+
+  const std::unique_ptr<sampan::layout::LayoutBox> root = sampan::layout::build(
+      *tree, {.x = 0.0, .y = 0.0, .width = 200.0, .height = 160.0});
+  ASSERT_NE(root, nullptr);
+
+  const sampan::layout::Extent extent = sampan::layout::document_extent(*root);
+  EXPECT_DOUBLE_EQ(extent.width, 100.0);
+  EXPECT_DOUBLE_EQ(extent.height, 38.4);
 }
 
 TEST(Layout, AppliesBoxModelAndExplicitSize) {
@@ -639,7 +674,7 @@ TEST(Layout, UsesTheProvidedTextMetricsForWrappingAndLineHeight) {
 }
 
 TEST(Layout, MatchesLayoutGoldens) {
-  constexpr std::array<std::string_view, 11> fixtures{
+  constexpr std::array<std::string_view, 12> fixtures{
       "sample",
       "nested",
       "row_wrapping",
@@ -651,6 +686,7 @@ TEST(Layout, MatchesLayoutGoldens) {
       "flow_alignment",
       "text_wrapping",
       "leaf_intrinsic_sizing",
+      "overflow",
   };
 
   for (const std::string_view fixture : fixtures) {

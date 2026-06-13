@@ -1,0 +1,15 @@
+page {
+  width: 1200px
+  height: 900px
+  background: #eef
+
+  box {
+    width: 1400px
+    height: 1000px
+    margin: 10px
+    border-width: 2px
+    border-color: #579
+    background: #fff
+    "This child extends beyond its explicitly sized page."
+  }
+}

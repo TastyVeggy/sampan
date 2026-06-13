@@ -25,6 +25,11 @@ struct EdgeSizes {
   double left;
 };
 
+struct Extent {
+  double width;
+  double height;
+};
+
 struct Dimensions {
   Rect content;
   EdgeSizes padding;
@@ -56,5 +61,7 @@ struct LayoutBox {
 [[nodiscard]] std::unique_ptr<LayoutBox>
 build(const node::Tree &tree, const Rect &viewport,
       const TextMetrics &metrics = fixed_text_metrics());
+
+[[nodiscard]] Extent document_extent(const LayoutBox &root) noexcept;
 
 } // namespace sampan::layout
