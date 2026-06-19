@@ -2,9 +2,9 @@
 
 #include <string>
 
-#include "sampan/ast/ast.hpp"
-
 namespace sampan::ast {
+
+struct Document;
 
 [[nodiscard]] std::string dump(const Document &document);
 

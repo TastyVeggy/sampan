@@ -1,5 +1,7 @@
 #include "child_rules.hpp"
 
+#include "sampan/node/node.hpp"
+
 namespace sampan::analyze::detail {
 
 bool child_allowed(const node::NodeKind parent,

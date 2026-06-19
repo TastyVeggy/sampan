@@ -1,5 +1,7 @@
 #include "property_rules.hpp"
 
+#include "sampan/node/node.hpp"
+
 namespace sampan::analyze::detail {
 namespace {
 

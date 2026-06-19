@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "sampan/core/overloaded.hpp"
+#include "sampan/node/node.hpp"
 
 namespace sampan::node {
 namespace {

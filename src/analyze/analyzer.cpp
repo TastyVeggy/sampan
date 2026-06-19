@@ -6,6 +6,7 @@
 #include <string_view>
 #include <utility>
 
+#include "sampan/ast/ast.hpp"
 #include "sampan/core/overloaded.hpp"
 
 #include "builtins.hpp"

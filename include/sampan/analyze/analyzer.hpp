@@ -3,9 +3,14 @@
 #include <memory>
 #include <vector>
 
-#include "sampan/ast/ast.hpp"
 #include "sampan/core/diagnostic.hpp"
 #include "sampan/node/node.hpp"
+
+namespace sampan::ast {
+
+struct Document;
+
+}
 
 namespace sampan::analyze {
 

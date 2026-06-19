@@ -7,7 +7,13 @@
 #include <vector>
 
 #include "sampan/layout/text_metrics.hpp"
-#include "sampan/node/node.hpp"
+
+namespace sampan::node {
+
+struct Node;
+struct Tree;
+
+} // namespace sampan::node
 
 namespace sampan::layout {
 

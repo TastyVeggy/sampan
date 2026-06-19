@@ -1,6 +1,10 @@
 #pragma once
 
-#include "sampan/node/node.hpp"
+namespace sampan::node {
+
+enum class NodeKind;
+
+}
 
 namespace sampan::analyze::detail {
 

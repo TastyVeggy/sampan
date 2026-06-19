@@ -2,9 +2,9 @@
 
 #include <string>
 
-#include "sampan/node/node.hpp"
-
 namespace sampan::node {
+
+struct Tree;
 
 [[nodiscard]] std::string dump(const Tree &tree);
 

@@ -5,6 +5,9 @@
 #include <sstream>
 #include <string_view>
 
+#include "sampan/layout/layout.hpp"
+#include "sampan/node/node.hpp"
+
 namespace sampan::layout {
 namespace {
 

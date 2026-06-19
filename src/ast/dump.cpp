@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "sampan/ast/ast.hpp"
 #include "sampan/core/overloaded.hpp"
 
 namespace sampan::ast {

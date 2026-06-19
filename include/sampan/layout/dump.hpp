@@ -2,9 +2,9 @@
 
 #include <string>
 
-#include "sampan/layout/layout.hpp"
-
 namespace sampan::layout {
+
+struct LayoutBox;
 
 [[nodiscard]] std::string dump(const LayoutBox &root);
 

@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "sampan/layout/defaults.hpp"
+#include "sampan/node/node.hpp"
 
 #include "text_layout.hpp"
 
