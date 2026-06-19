@@ -6,8 +6,11 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QRectF>
+#include <QResizeEvent>
 #include <QScrollBar>
+#include <QShowEvent>
 #include <QString>
+#include <QStyle>
 
 #include <algorithm>
 #include <cmath>
@@ -20,6 +23,7 @@
 
 #include "sampan/layout/defaults.hpp"
 #include "sampan/layout/layout.hpp"
+#include "sampan/node/node.hpp"
 
 namespace sampan::app {
 namespace {
@@ -210,37 +214,116 @@ DocumentView::DocumentView(std::unique_ptr<node::Tree> tree, QWidget *parent)
   resize(960, 640);
 }
 
+DocumentView::~DocumentView() = default;
+
+void DocumentView::set_tree(std::unique_ptr<node::Tree> tree) {
+  tree_ = std::move(tree);
+  horizontalScrollBar()->setValue(0);
+  verticalScrollBar()->setValue(0);
+  layout_dirty_ = true;
+  rebuild_layout();
+  viewport()->update();
+}
+
 void DocumentView::paintEvent(QPaintEvent *event) {
+  if (layout_dirty_) {
+    rebuild_layout();
+  }
+
   QPainter painter{viewport()};
   painter.setRenderHint(QPainter::Antialiasing);
   painter.fillRect(event->rect(), Qt::white);
-
-  const QFont base_font = painter.font();
-  const QtTextMetrics text_metrics{base_font, painter.device()};
-  const std::unique_ptr<layout::LayoutBox> root =
-      layout::build(*tree_,
-                    {.x = 0.0,
-                     .y = 0.0,
-                     .width = static_cast<double>(viewport()->width()),
-                     .height = static_cast<double>(viewport()->height())},
-                    text_metrics);
-  if (root == nullptr) {
+  if (layout_ == nullptr) {
     return;
   }
 
-  const layout::Extent extent = layout::document_extent(*root);
-  configure_scroll_bar(*horizontalScrollBar(), extent.width,
-                       viewport()->width());
-  configure_scroll_bar(*verticalScrollBar(), extent.height,
-                       viewport()->height());
-
   painter.translate(-horizontalScrollBar()->value(),
                     -verticalScrollBar()->value());
-  paint_box(painter, *root, base_font);
+  paint_box(painter, *layout_, painter.font());
+}
+
+void DocumentView::resizeEvent(QResizeEvent *event) {
+  QAbstractScrollArea::resizeEvent(event);
+  layout_dirty_ = true;
+  rebuild_layout();
+  viewport()->update();
+}
+
+void DocumentView::showEvent(QShowEvent *event) {
+  QAbstractScrollArea::showEvent(event);
+  rebuild_layout();
 }
 
 void DocumentView::scrollContentsBy(const int /* dx */, const int /* dy */) {
   viewport()->update();
+}
+
+void DocumentView::rebuild_layout() {
+  if (!layout_dirty_ || rebuilding_layout_) {
+    return;
+  }
+
+  if (tree_ == nullptr) {
+    layout_.reset();
+    horizontalScrollBar()->setRange(0, 0);
+    verticalScrollBar()->setRange(0, 0);
+    layout_dirty_ = false;
+    return;
+  }
+
+  rebuilding_layout_ = true;
+
+  const QSize maximum_viewport = maximumViewportSize();
+  const int scroll_bar_extent =
+      style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this);
+  const QFont base_font = viewport()->font();
+  const QtTextMetrics text_metrics{base_font, viewport()};
+
+  bool needs_horizontal_scroll_bar = false;
+  bool needs_vertical_scroll_bar = false;
+  int available_width = maximum_viewport.width();
+  int available_height = maximum_viewport.height();
+  layout::Extent extent;
+
+  // A scrollbar consumes space on the opposite axis. Repeat until adding one
+  // scrollbar no longer causes overflow that requires the other scrollbar.
+  for (int iteration = 0; iteration < 3; ++iteration) {
+    available_width =
+        std::max(0, maximum_viewport.width() -
+                        (needs_vertical_scroll_bar ? scroll_bar_extent : 0));
+    available_height =
+        std::max(0, maximum_viewport.height() -
+                        (needs_horizontal_scroll_bar ? scroll_bar_extent : 0));
+
+    layout_ = layout::build(*tree_,
+                            {.x = 0.0,
+                             .y = 0.0,
+                             .width = static_cast<double>(available_width),
+                             .height = static_cast<double>(available_height)},
+                            text_metrics);
+    if (layout_ == nullptr) {
+      break;
+    }
+
+    extent = layout::document_extent(*layout_);
+    const bool next_horizontal =
+        needs_horizontal_scroll_bar ||
+        scroll_maximum(extent.width, available_width) > 0;
+    const bool next_vertical =
+        needs_vertical_scroll_bar ||
+        scroll_maximum(extent.height, available_height) > 0;
+    if (next_horizontal == needs_horizontal_scroll_bar &&
+        next_vertical == needs_vertical_scroll_bar) {
+      break;
+    }
+    needs_horizontal_scroll_bar = next_horizontal;
+    needs_vertical_scroll_bar = next_vertical;
+  }
+
+  configure_scroll_bar(*horizontalScrollBar(), extent.width, available_width);
+  configure_scroll_bar(*verticalScrollBar(), extent.height, available_height);
+  layout_dirty_ = false;
+  rebuilding_layout_ = false;
 }
 
 } // namespace sampan::app

@@ -1,4 +1,4 @@
-add_executable(test_app test_document_view.cpp)
+add_executable(test_app test_browser_window.cpp test_document_view.cpp)
 
 target_link_libraries(test_app PRIVATE sampan_analyze sampan_app sampan_parse
     sampan_warnings sampan_sanitizers GTest::gtest)

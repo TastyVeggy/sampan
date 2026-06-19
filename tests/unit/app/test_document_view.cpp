@@ -76,6 +76,25 @@ TEST(DocumentView, AddsBothScrollBarsForAnOversizedPage) {
   EXPECT_GT(view.verticalScrollBar()->maximum(), 0);
 }
 
+TEST(DocumentView, StabilizesScrollbarNeedsAcrossViewportResizes) {
+  std::unique_ptr<sampan::node::Tree> tree =
+      analyze_source("page { height: 600px }");
+  ASSERT_NE(tree, nullptr);
+
+  sampan::app::DocumentView view{std::move(tree)};
+  view.resize(200, 300);
+  settle(view);
+
+  EXPECT_EQ(view.horizontalScrollBar()->maximum(), 0);
+  EXPECT_GT(view.verticalScrollBar()->maximum(), 0);
+
+  view.resize(800, 800);
+  settle(view);
+
+  EXPECT_EQ(view.horizontalScrollBar()->maximum(), 0);
+  EXPECT_EQ(view.verticalScrollBar()->maximum(), 0);
+}
+
 TEST(DocumentView, ScrollsToDescendantsOutsideAnExplicitPage) {
   std::unique_ptr<sampan::node::Tree> tree =
       analyze_source("page { width: 100px height: 100px "

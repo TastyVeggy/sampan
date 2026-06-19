@@ -14,6 +14,7 @@
 #include "sampan/app/application.hpp"
 #include "sampan/ast/dump.hpp"
 #include "sampan/layout/dump.hpp"
+#include "sampan/layout/layout.hpp"
 #include "sampan/lex/lexer.hpp"
 #include "sampan/node/dump.hpp"
 #include "sampan/parse/parser.hpp"
@@ -26,13 +27,15 @@ constexpr int kUserProgramError = 3;
 constexpr int kIoError = 5;
 
 void print_usage(std::ostream &output) {
-  output << "Usage: sampan <command>\nCommands:\n"
+  output << "Usage:\n"
+         << "  sampan [path-or-url] Open the Sampan browser\n"
+         << "  sampan <command> [arguments]\n\n"
+         << "Commands:\n"
          << "  version    Print the Sampan version\n"
          << "  lex <path> Dump Yuloh tokens\n"
          << "  parse <path> Dump the Yuloh AST\n"
          << "  analyze <path> Dump the validated Yuloh node tree\n"
-         << "  layout <path> <width> <height> Dump the layout tree\n"
-         << "  view <path> Display a local Yuloh document\n";
+         << "  layout <path> <width> <height> Dump the layout tree\n";
 }
 
 [[nodiscard]] std::optional<double>
@@ -187,9 +190,18 @@ int main(const int argc, char *argv[]) {
     }
     return kSuccess;
   }
-  if (argc == 3 && std::string_view{argv[1]} == "view") {
-    return sampan::app::run(argc, argv, argv[2]);
+  if (argc == 1) {
+    return sampan::app::run(argc, argv, std::nullopt);
   }
-  print_usage(argc == 1 ? std::cout : std::cerr);
-  return argc == 1 ? kSuccess : kCliMisuse;
+  if (argc == 2) {
+    const std::string_view argument{argv[1]};
+    if (argument == "lex" || argument == "parse" || argument == "analyze" ||
+        argument == "layout") {
+      print_usage(std::cerr);
+      return kCliMisuse;
+    }
+    return sampan::app::run(argc, argv, std::string{argument});
+  }
+  print_usage(std::cerr);
+  return kCliMisuse;
 }
