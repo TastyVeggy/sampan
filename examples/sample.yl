@@ -1,0 +1,218 @@
+page {
+  title: "Sampan Sample Page"
+  background: #eef6f8
+
+  stack {
+    padding: 22px
+    gap: 26px
+
+    // Masthead
+    row {
+      align: "center"
+      justify: "center"
+      gap: 14px
+
+      text {
+        content: "SAMPAN"
+        color: #102a43
+        size: 18px
+        weight: 700
+      }
+
+      text {
+        content: "A browser for Yuloh documents"
+        color: #627d98
+        size: 15px
+      }
+    }
+
+    // Hero
+    box {
+      padding: 42px
+      background: #102a43
+      border-width: 1px
+      border-color: #234e68
+
+      stack {
+        gap: 16px
+        align: "center"
+
+        text {
+          content: "YULOH : A SMALL DOCUMENT LANGUAGE"
+          color: #b8ead9
+          size: 13px
+          weight: 700
+        }
+
+        heading {
+          content: "Write a document.\nSee the page."
+          color: #ffffff
+          size: 44px
+          level: 1
+        }
+
+        text {
+          content: "Sampan turns a Yuloh file into a rendered page."
+          color: #d9eaf0
+          size: 18px
+        }
+
+        spacer { size: 6px }
+
+        row {
+          gap: 12px
+          justify: "center"
+
+          button {
+            padding: 14px
+            background: #b8ead9
+            "Explore Yuloh"
+          }
+
+          button {
+            padding: 14px
+            background: #ffb38a
+            "Read the source"
+          }
+        }
+      }
+    }
+
+    // Capabilities
+    row {
+      gap: 18px
+      justify: "center"
+
+      box {
+        width: 270px
+        padding: 24px
+        background: #ffffff
+        border-width: 1px
+        border-color: #d4e5ea
+
+        stack {
+          gap: 12px
+
+          box {
+            height: 8px
+            background: #176b87
+          }
+
+          text {
+            content: "01  ·  START"
+            color: #176b87
+            size: 12px
+            weight: 700
+          }
+
+          heading {
+            content: "Begin with a page"
+            color: #243b53
+            size: 22px
+            level: 3
+          }
+
+          text {
+            content: "Place a heading, a little copy, and a few simple blocks in the order you want them to appear."
+            color: #627d98
+            size: 16px
+          }
+        }
+      }
+
+      box {
+        width: 270px
+        padding: 24px
+        background: #ffffff
+        border-width: 1px
+        border-color: #d4e5ea
+
+        stack {
+          gap: 12px
+
+          box {
+            height: 8px
+            background: #4fa58d
+          }
+
+          text {
+            content: "02  ·  ARRANGE"
+            color: #327660
+            size: 12px
+            weight: 700
+          }
+
+          heading {
+            content: "Give the page some room"
+            color: #243b53
+            size: 22px
+            level: 3
+          }
+
+          text {
+            content: "Group related pieces together, add space between them."
+            color: #627d98
+            size: 16px
+          }
+        }
+      }
+
+      box {
+        width: 270px
+        padding: 24px
+        background: #ffffff
+        border-width: 1px
+        border-color: #d4e5ea
+
+        stack {
+          gap: 12px
+
+          box {
+            height: 8px
+            background: #ffb38a
+          }
+
+          text {
+            content: "03  ·  MAKE IT YOURS"
+            color: #b85d42
+            size: 12px
+            weight: 700
+          }
+
+          heading {
+            content: "Add a little character"
+            color: #243b53
+            size: 22px
+            level: 3
+          }
+
+          text {
+            content: "Choose colors, type sizes, and gentle details that make the document feel like your own."
+            color: #627d98
+            size: 16px
+          }
+        }
+      }
+    }
+
+    // Source-inspired callout
+    box {
+      padding: 30px
+      background: #d8f0ea
+      border-width: 1px
+      border-color: #b9ddd2
+
+      stack {
+        gap: 10px
+        align: "center"
+
+        text {
+          content: "Open this example in Sampan, resize the window, and watch rows wrap into a responsive document."
+          color: #397060
+          size: 16px
+        }
+      }
+    }
+
+  }
+}
